@@ -1,3 +1,11 @@
+import React, { JSX } from 'react';
+import './styles/globals.css';
+import {
+    BrowserRouter as Router,
+    Routes,
+    Route,
+    Navigate,
+} from 'react-router-dom';
 import { Header } from './components/Header';
 import { SensorCard } from './components/SensorCard';
 import { WaterClassificationPanel } from './components/WaterClassificationPanel';
@@ -7,12 +15,19 @@ import { MapVisualization } from './components/MapVisualization';
 import { AlertsPanel } from './components/AlertsPanel';
 import { SystemArchitecture } from './components/SystemArchitecture';
 import { Footer } from './components/Footer';
+import { LoginPage } from './components/LoginPage'; // Đảm bảo tên export là đúng
 import { Droplet, Thermometer, Zap, Eye, Wind, Waves } from 'lucide-react';
-import Dashboard from './components/Dashboard';
 import Predict from './components/Predict';
+import PredictTable from './components/PredictTable';
 
-export default function App() {
-    // Mock sensor data
+// check authorize
+const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
+    const isAuthenticated = document.cookie.includes('user_session'); // Check for cookie
+    return isAuthenticated ? children : <Navigate to="/login" replace />;
+};
+
+// Main Page (Dashboard)
+const Dashboard = () => {
     const sensorData = {
         pH: {
             value: 7.2,
@@ -55,16 +70,13 @@ export default function App() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-blue-50 to-blue-100">
             <Header />
-            <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 bg-white rounded-2xl shadow-lg border border-gray-200">
-                <Dashboard />
-                <Predict />
-            </div>
             <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-                {/* Real-Time Sensor Cards */}
                 <section>
                     <h2 className="text-cyan-900 mb-6">
                         Real-Time Sensor Readings
                     </h2>
+                    <PredictTable />
+                    <Predict />
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         <SensorCard
                             icon={<Droplet className="w-8 h-8" />}
@@ -135,16 +147,11 @@ export default function App() {
                     </div>
                 </section>
 
-                {/* Water Classification & AI Prediction */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <WaterClassificationPanel />
                     <AIPredictionPanel />
                 </div>
-
-                {/* Trend Charts */}
                 <TrendCharts />
-
-                {/* Map & Alerts */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2">
                         <MapVisualization />
@@ -153,12 +160,33 @@ export default function App() {
                         <AlertsPanel />
                     </div>
                 </div>
-
-                {/* System Architecture */}
                 <SystemArchitecture />
             </main>
-
             <Footer />
         </div>
+    );
+};
+
+export default function App() {
+    return (
+        <Router>
+            <Routes>
+                {/* Route for Login */}
+                <Route path="/login" element={<LoginPage />} />
+
+                {/* Route for MainPage (Dashboard) */}
+                <Route
+                    path="/"
+                    element={
+                        <ProtectedRoute>
+                            <Dashboard />
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* Chuyển hướng các đường dẫn lạ về trang chính */}
+                <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+        </Router>
     );
 }

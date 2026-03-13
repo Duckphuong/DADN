@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { getHistory } from '../services/api';
 import { HistoryData } from '../types/water';
 
-export default function Dashboard() {
+export default function PredictTable() {
     const [data, setData] = useState<HistoryData[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -27,6 +27,7 @@ export default function Dashboard() {
             <table border={1} cellPadding={8}>
                 <thead>
                     <tr>
+                        <th>Quality</th>
                         <th>Status</th>
                         <th>Temp</th>
                         <th>Turbidity</th>
@@ -50,12 +51,13 @@ export default function Dashboard() {
                         .filter((d) => d.sensor_data)
                         .map((d) => (
                             <tr key={d._id}>
+                                <td>{d.quality_label}</td>
                                 <td
                                     style={{
                                         color:
-                                            d.quality_name === 'Excellent'
+                                            d.quality_name === 'Good'
                                                 ? 'green'
-                                                : d.quality_name === 'Good'
+                                                : d.quality_name === 'Moderate'
                                                   ? 'orange'
                                                   : 'red',
                                         fontWeight: 'bold',

@@ -1,52 +1,83 @@
-# Backend Auth API
 
-Backend nay da duoc rut gon ve auth voi MongoDB va JWT.
+# Backend 
 
-## Folder structure
+---
+
+## Tính năng (Features)
+
+- Đăng ký, đăng nhập, đăng xuất bằng **JWT**.
+- Lưu trữ người dùng (User) và trạm cảm biến (Sensor Station) trong **MongoDB**.
+- Chỉ chủ sở hữu (**Owner**) mới được quyền đọc, sửa, xóa dữ liệu của mình.
+- Xóa mềm (**Soft delete**) cho bộ sưu tập `sensor_informations`.
+- Thời gian (Datetime) được chuẩn hóa theo múi giờ **UTC**.
+- Phản hồi lỗi (Error response) được chuẩn hóa theo một định dạng duy nhất.
+
+---
+
+## Công nghệ sử dụng (Tech Stack)
+
+- **Ngôn ngữ:** Python 3.10+
+- **Framework:** Flask 3.1
+- **Tiện ích:** Flask-CORS, PyJWT, bcrypt
+- **Database:** MongoDB
+
+---
+
+## Cấu trúc dự án (Project Structure)
 
 ```text
-app/
-├── __init__.py
-├── config.py
-├── bootstrap/
-│   └── container.py
-├── domain/
-│   ├── auth/
-│   ├── sensor_station/
-│   └── shared/
-├── application/
-│   ├── auth/
-│   ├── sensor_station/
-│   └── common/
-├── infrastructure/
-│   ├── persistence/
-│   │   └── mongo/
-│   └── security/
-└── presentation/
-    └── http/
-        ├── middleware/
-        ├── routes/
-        ├── serializers/
-        └── validators/
+be/
+├── app/
+│   ├── __init__.py
+│   ├── config.py
+│   ├── bootstrap/
+│   │   └── container.py
+│   ├── domain/
+│   │   ├── auth/
+│   │   ├── sensor_station/
+│   │   └── shared/
+│   ├── application/
+│   │   ├── auth/
+│   │   ├── sensor_station/
+│   │   └── common/
+│   ├── infrastructure/
+│   │   ├── persistence/
+│   │   │   └── mongo/
+│   │   └── security/
+│   └── presentation/
+│       └── http/
+│           ├── middleware/
+│           ├── routes/
+│           ├── serializers/
+│           └── validators/
+├── requirements.txt
+├── run.py
+└── README.md
 ```
 
-## Yeu cau
+---
 
-- Python 3.10+
-- MongoDB Atlas hoac MongoDB server hop le
+## Trách nhiệm của các lớp (Layer Responsibilities)
 
-## Cau hinh
+### `domain/`
+- Chứa thực thể (entity), đối tượng giá trị (value object), các quy tắc nghiệp vụ (domain rules).
 
-Cap nhat file `.env`:
 
-```env
-MONGO_URI=mongodb+srv://<user>:<password>@cluster0.od27giy.mongodb.net/?appName=Cluster0
-MONGO_DB_NAME=dungne
-JWT_SECRET_KEY=change-me
-JWT_ACCESS_TOKEN_EXPIRES_MINUTES=60
-```
+### `application/`
+- Chứa các trường hợp sử dụng (use case) và điều phối luồng nghiệp vụ.
+- Định nghĩa giao diện (interfaces) cho repository và các cổng bảo mật (security ports).
 
-## Cai dat va chay
+### `infrastructure/`
+- Kết nối MongoDB, triển khai Repository và Document mapper.
+- Chứa các dịch vụ hạ tầng: JWT service, Password hasher.
+
+### `presentation/`
+- Flask routes, Request validation và Middleware HTTP.
+- Chuyển đổi dữ liệu phản hồi (Serializer).
+- Ánh xạ lỗi từ application exception sang mã trạng thái HTTP.
+
+---
+## Cài đặt và Chạy ( Đang test trên Ubuntu , Ai làm Win sửa lại nha) 
 
 ```bash
 cd /home/dungne/DADN/be
@@ -56,107 +87,43 @@ pip install -r requirements.txt
 python3 run.py
 ```
 
-Server mac dinh chay tai `http://127.0.0.1:5000`.
+- **Mặc định:** `http://127.0.0.1:5000`
+- **Kiểm tra nhanh:** `curl http://127.0.0.1:5000/health`
 
-## API
+---
 
-### Health
+## Danh sách API (API Summary)
 
-```bash
-curl http://127.0.0.1:5000/health
-```
+### 1. Hệ thống & Xác thực
+- `GET /health`: Kiểm tra trạng thái hệ thống.
+- `POST /auth/register`: Đăng ký tài khoản.
+- `POST /auth/login`: Đăng nhập lấy JWT.
+- `POST /auth/logout`: Đăng xuất (Stateless).
 
-### Register
+### 2. Trạm cảm biến (Cần Authorization Header)
+- `POST /api/sensors`: Tạo trạm mới.
+- `GET /api/sensors`: Lấy danh sách (Phân trang: `page`, `limit`).
+- `GET /api/sensors/<id>`: Xem chi tiết.
+- `PATCH /api/sensors/<id>`: Cập nhật từng phần.
+- `DELETE /api/sensors/<id>`: Xóa mềm.
 
-```bash
-curl -X POST http://127.0.0.1:5000/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "fullName": "Nguyen Van Chuyen Gia",
-    "email": "chuyengia@water.com",
-    "urlAvatar": "https://example.com/avatar.jpg",
-    "password": "12345678",
-    "role": "MANAGER",
-    "phoneNumber": "0987654321"
-  }'
-```
+---
 
-Document luu vao collection `users` theo schema:
+## Định dạng phản hồi lỗi
 
+Tất cả lỗi đều tuân theo format:
 ```json
 {
-  "fullName": "Nguyen Van Chuyen Gia",
-  "email": "chuyengia@water.com",
-  "urlAvatar": "https://example.com/avatar.jpg",
-  "password": "$2b$10$...",
-  "role": "MANAGER",
-  "phoneNumber": "0987654321",
-  "status": "ACTIVE",
-  "createdAt": "2026-03-22T08:00:00.000Z",
-  "updatedAt": "2026-03-22T08:00:00.000Z"
+  "error": "Nội dung thông báo lỗi chi tiết"
 }
 ```
 
-### Login
+## Hướng dẫn phát triển (Development Guide)
 
-```bash
-curl -X POST http://127.0.0.1:5000/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "chuyengia@water.com",
-    "password": "12345678"
-  }'
-```
-
-### Logout
-
-```bash
-curl -X POST http://127.0.0.1:5000/auth/logout \
-  -H "Authorization: Bearer <jwt-token>"
-```
-
-### SensorStation
-
-Tất cả API duoi day deu can `Authorization: Bearer <jwt-token>` va chi thao tac tren du lieu cua owner hien tai.
-
-```bash
-curl -X POST http://127.0.0.1:5000/api/sensors \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <jwt-token>" \
-  -d '{
-    "sensorName": "Tram quan trac Ho Tay",
-    "location": {
-      "longitude": 105.8188,
-      "latitude": 21.0556
-    },
-    "status": "ONLINE"
-  }'
-```
-
-```bash
-curl -H "Authorization: Bearer <jwt-token>" \
-  "http://127.0.0.1:5000/api/sensors?page=1&limit=10&status=ONLINE"
-```
-
-```bash
-curl -H "Authorization: Bearer <jwt-token>" \
-  http://127.0.0.1:5000/api/sensors/<sensor-id>
-```
-
-```bash
-curl -X PATCH http://127.0.0.1:5000/api/sensors/<sensor-id> \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <jwt-token>" \
-  -d '{
-    "sensorName": "Tram quan trac Ho Tay 01",
-    "status": "OFFLINE",
-    "location": {
-      "longitude": 105.82
-    }
-  }'
-```
-
-```bash
-curl -X DELETE http://127.0.0.1:5000/api/sensors/<sensor-id> \
-  -H "Authorization: Bearer <jwt-token>"
+Khi thêm tính năng mới, hãy tuân theo trình tự:
+1. Thêm entity tại `app/domain/`.
+2. Thêm use case và interface tại `app/application/`.
+3. Triển khai repository tại `app/infrastructure/`.
+4. Thêm validator, serializer và route tại `app/presentation/`.
+5. Đăng ký dependencies tại `app/bootstrap/container.py`.
 ```

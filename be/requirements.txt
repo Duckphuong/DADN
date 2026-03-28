@@ -1,11 +1,5 @@
 Flask==3.1.0
-Flask-SQLAlchemy==3.1.1
 PyJWT==2.10.1
-requests==2.32.3
-Werkzeug==3.1.3
-pandas
-scikit-learn
-joblib
-pymongo
-openpyxl
+bcrypt==4.2.1
 Flask-CORS
+pymongo

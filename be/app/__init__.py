@@ -1,11 +1,11 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
 
+from app.bootstrap.container import CONTAINER_EXTENSION_KEY, build_container
 from app.config import Config
-from app.database.db import db
-from app.routes.auth_routes import auth_bp
-from app.routes.sensor_routes import sensor_bp
-from app.routes.prediction_routes import prediction_bp, ai_service
+from app.infrastructure.persistence.mongo.connection import get_mongo_state, init_mongo
+from app.presentation.http.routes.auth_routes import auth_bp
+from app.presentation.http.routes.sensor_station_routes import sensor_station_bp
 
 
 def create_app():
@@ -14,19 +14,20 @@ def create_app():
 
     CORS(app)  # Enable CORS for all routes
 
-    db.init_app(app)
-
-    with app.app_context():
-        db.create_all()
-        # Auto-train AI model if needed
-        ai_service.auto_train()
+    init_mongo(app)
+    app.extensions[CONTAINER_EXTENSION_KEY] = build_container(app.config)
 
     app.register_blueprint(auth_bp)
-    app.register_blueprint(sensor_bp)
-    app.register_blueprint(prediction_bp)
+    app.register_blueprint(sensor_station_bp)
 
     @app.get("/health")
     def health_check():
-        return jsonify({"status": "ok"}), 200
+        mongo_state = get_mongo_state()
+        status = (
+            "ok"
+            if mongo_state.get("connected") or not mongo_state.get("configured")
+            else "degraded"
+        )
+        return jsonify({"status": status, "mongo": mongo_state}), 200
 
     return app

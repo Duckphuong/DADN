@@ -84,11 +84,15 @@ be/
 
 ```bash
 cd /home/dungne/DADN/be
-python3 -m venv .venv
-source .venv/bin/activate
-# source .venv/Scripts/activate
+# python3 -m venv .venv
+python -m venv .venv
+
+# source .venv/bin/activate
+source .venv/Scripts/activate
 pip install -r requirements.txt
-python3 run.py
+# python3 run.py
+python run.py
+
 ```
 
 - **Mặc định:** `http://127.0.0.1:5000`

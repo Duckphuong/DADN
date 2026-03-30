@@ -3,8 +3,21 @@ import { SensorData } from '../types/water';
 import { predictWater } from '../services/api';
 
 interface PredictResult {
-    quality_name: string;
-    solution: string;
+    contamination_risk: {
+        risk_level: number;
+        status: string;
+    };
+    forecast_24h: {
+        confidence_score: number;
+        model_used: string;
+        predicted_wqi_range: [number, number];
+        trend: string;
+    };
+    wqi: {
+        label: string;
+        max: number;
+        score: number;
+    };
 }
 
 function Predict() {
@@ -70,13 +83,27 @@ function Predict() {
 
             {result && (
                 <div style={{ marginTop: '30px' }}>
-                    <h2>Result</h2>
+                    <h2>Prediction Result</h2>
 
                     <p>
-                        Quality: <b>{result.quality_name}</b>
+                        WQI: <strong>{result.wqi.label}</strong> (score:{' '}
+                        {result.wqi.score}/{result.wqi.max})
                     </p>
 
-                    <p>Solution: {result.solution}</p>
+                    <p>
+                        Contamination risk:{' '}
+                        <strong>{result.contamination_risk.status}</strong>
+                        (level: {result.contamination_risk.risk_level})
+                    </p>
+
+                    <p>Forecast trend: {result.forecast_24h.trend}</p>
+                    <p>Model used: {result.forecast_24h.model_used}</p>
+                    <p>Confidence: {result.forecast_24h.confidence_score}%</p>
+                    <p>
+                        Predicted WQI range:{' '}
+                        {result.forecast_24h.predicted_wqi_range[0]} -{' '}
+                        {result.forecast_24h.predicted_wqi_range[1]}
+                    </p>
                 </div>
             )}
         </div>

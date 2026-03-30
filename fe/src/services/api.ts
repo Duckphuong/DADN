@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { HistoryData } from '../types/water';
 
-const API_URL = 'http://localhost:5000';
+const API_URL = (import.meta as any).env.VITE_API_URL as string;
 
 const api = axios.create({
     baseURL: API_URL,

@@ -5,6 +5,7 @@ from datetime import datetime
 
 from app.infrastructure.persistence.mongo.connection import get_mongo_database
 from app.services.ai_model_service import AIModelService
+from app.domain.prediction.predict_module import PredictModule
 
 prediction_bp = Blueprint('prediction', __name__, url_prefix="/prediction")
 
@@ -36,28 +37,36 @@ def predict():
     try:
         db = get_mongo_database()
         if db is not None:
-            coll = db.get_collection("predictions")
+            # Create PredictModule
+            predict_module = PredictModule.create_new(
+                wqi_score=result["wqi"]["score"],
+                contamination_risk=result["contamination_risk"]["status"],
+                forecast_24h=result["forecast_24h"]["trend"],
+                predicted_wqi=f"{result['forecast_24h']['predicted_wqi_range'][0]}-{result['forecast_24h']['predicted_wqi_range'][1]}",
+                confidence=result["forecast_24h"]["confidence_score"],
+                message=f"WQI: {result['wqi']['score']}, Risk: {result['contamination_risk']['status']}",
+                input_sensor_id="temp",  # placeholder
+                id_sensor="sensor1",  # placeholder
+            )
+            coll = db.get_collection("predictModule")
             doc = {
-                "Temp": float(data.get("Temp", 0)),
-                "Turbidity": float(data.get("Turbidity", 0)),
-                "DO": float(data.get("DO", 0)),
-                "BOD": float(data.get("BOD", 0)),
-                "CO2": float(data.get("CO2", 0)),
-                "pH": float(data.get("pH", 0)),
-                "Alkalinity": float(data.get("Alkalinity", 0)),
-                "Hardness": float(data.get("Hardness", 0)),
-                "Calcium": float(data.get("Calcium", 0)),
-                "Ammonia": float(data.get("Ammonia", 0)),
-                "Nitrite": float(data.get("Nitrite", 0)),
-                "Phosphorus": float(data.get("Phosphorus", 0)),
-                "H2S": float(data.get("H2S", 0)),
-                "Plankton": float(data.get("Plankton", 0)),
-                "prediction": result,
-                "created_at": datetime.utcnow(),
+                "wqi_score": predict_module.wqi_score,
+                "contamination_risk": predict_module.contamination_risk,
+                "forecast_24h": predict_module.forecast_24h,
+                "predicted_wqi": predict_module.predicted_wqi,
+                "confidence": predict_module.confidence,
+                "message": predict_module.message,
+                "status": predict_module.status,
+                "time_ago": predict_module.time_ago,
+                "inputSensorId": predict_module.input_sensor_id,
+                "idSensor": predict_module.id_sensor,
+                "is_email_processed": predict_module.is_email_processed,
+                "created_at": predict_module.created_at,
+                "updated_at": predict_module.updated_at,
             }
             coll.insert_one(doc)
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Error saving prediction: {e}")
 
     return jsonify(result)
 

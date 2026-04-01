@@ -11,14 +11,38 @@
 - Thời gian (Datetime) được chuẩn hóa theo múi giờ **UTC**.
 - Phản hồi lỗi (Error response) được chuẩn hóa theo một định dạng duy nhất.
 
+### Alert Service (Dịch vụ cảnh báo)
+
+**Mô tả:** Hệ thống cảnh báo tự động gửi email khi chất lượng nước xuống cấp nghiêm trọng.
+
+**Cách hoạt động:**
+1. **Giám sát tự động:** Mỗi phút hệ thống quét các dự đoán AI chưa xử lý
+2. **Điều kiện kích hoạt:** WQI < 50 hoặc rủi ro ô nhiễm "High Risk"/"Critical"
+3. **Chống spam:** Đợi 2 giờ cho cảnh báo không nghiêm trọng, gửi ngay cho trường hợp khẩn cấp
+4. **Gửi email:** Thông báo chi tiết về tình trạng nước qua SMTP Gmail
+
+**API Endpoints:**
+- `GET /api/v1/alerts` - Lấy danh sách cảnh báo (Critical/Warning/Info)
+- `PUT /api/v1/alerts/{id}/read` - Đánh dấu đã đọc
+
+**Cấu hình Email:**
+```env
+SMTP_SERVER=smtp.gmail.com
+SMTP_PORT=587
+EMAIL=your-email@gmail.com
+PASSWORD=your-app-password
+ALERT_EMAIL_TO=recipient@example.com
+```
+
 ---
 
 ## Công nghệ sử dụng (Tech Stack)
 
 - **Ngôn ngữ:** Python 3.10+
 - **Framework:** Flask 3.1
-- **Tiện ích:** Flask-CORS, PyJWT, bcrypt
+- **Tiện ích:** Flask-CORS, PyJWT, bcrypt, APScheduler
 - **Database:** MongoDB
+- **Email:** SMTP (Gmail)
 
 ---
 
@@ -34,6 +58,7 @@ be/
 │   ├── domain/
 │   │   ├── auth/
 │   │   ├── sensor_station/
+│   │   ├── prediction/          # Alert service domain
 │   │   └── shared/
 │   ├── application/
 │   │   ├── auth/
@@ -43,12 +68,18 @@ be/
 │   │   ├── persistence/
 │   │   │   └── mongo/
 │   │   └── security/
-│   └── presentation/
-│       └── http/
-│           ├── middleware/
-│           ├── routes/
-│           ├── serializers/
-│           └── validators/
+│   ├── presentation/
+│   │   └── http/
+│   │       ├── middleware/
+│   │       ├── routes/
+│   │       ├── serializers/
+│   │       └── validators/
+│   ├── routes/
+│   │   ├── alert_routes.py      # Alert API endpoints
+│   │   └── prediction_routes.py
+│   └── services/
+│       ├── ai_model_service.py
+│       └── alert_service.py     # Email alert service
 ├── requirements.txt
 ├── run.py
 └── README.md

@@ -7,7 +7,7 @@ from app.infrastructure.persistence.mongo.connection import get_mongo_state, ini
 from app.presentation.http.routes.auth_routes import auth_bp
 from app.presentation.http.routes.sensor_station_routes import sensor_station_bp
 from app.routes.prediction_routes import prediction_bp
-
+from app.presentation.http.routes.sensor_data_routes import sensor_data_bp
 
 def create_app():
     app = Flask(__name__)
@@ -21,7 +21,7 @@ def create_app():
     app.register_blueprint(auth_bp)
     app.register_blueprint(sensor_station_bp)
     app.register_blueprint(prediction_bp)
-
+    app.register_blueprint(sensor_data_bp)
     @app.route("/")
     def home():
         return {

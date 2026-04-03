@@ -199,6 +199,10 @@ cython_debug/
 #  exclude from AI features like autocomplete and code analysis. Recommended for sensitive data
 #  refer to https://docs.cursor.com/context/ignore-files
 
+# Ignore local model assets in backend
+be/mmodelsAI/
+
+
 # Node / Frontend
 node_modules/
 fe/node_modules/

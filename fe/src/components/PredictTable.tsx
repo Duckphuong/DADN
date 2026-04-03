@@ -27,7 +27,6 @@ export default function PredictTable() {
             <table border={1} cellPadding={8}>
                 <thead>
                     <tr>
-                        <th>ID</th>
                         <th>Created At</th>
                         <th>pH</th>
                         <th>Temp</th>
@@ -52,7 +51,6 @@ export default function PredictTable() {
                 <tbody>
                     {data.map((d) => (
                         <tr key={d.id || d.created_at || Math.random()}>
-                            <td>{d.id}</td>
                             <td>
                                 {d.created_at
                                     ? new Date(d.created_at).toLocaleString()
@@ -72,15 +70,15 @@ export default function PredictTable() {
                             <td>{d.Phosphorus}</td>
                             <td>{d.H2S}</td>
                             <td>{d.Plankton}</td>
-                            <td>{d.prediction?.wqi?.label ?? '-'}</td>
+                            <td>{d.prediction.summary?.wqi?.label ?? '-'}</td>
                             <td>
-                                {d.prediction?.contamination_risk?.status ??
-                                    '-'}
+                                {d.prediction.summary?.contamination_risk
+                                    ?.status ?? '-'}
                             </td>
                             <td>
-                                {d.prediction?.forecast_24h
-                                    ? `${d.prediction.forecast_24h.trend} (${d.prediction.forecast_24h.model_used}, ${d.prediction.forecast_24h.confidence_score}%` +
-                                      `, range ${d.prediction.forecast_24h.predicted_wqi_range[0]}-${d.prediction.forecast_24h.predicted_wqi_range[1]})`
+                                {d.prediction.summary?.forecast_24h
+                                    ? `${d.prediction.summary.forecast_24h.trend} (${d.prediction.summary.forecast_24h.model_used}, ${d.prediction.summary.forecast_24h.confidence_score}%` +
+                                      `, range ${d.prediction.summary.forecast_24h.predicted_wqi_range[0]}-${d.prediction.summary.forecast_24h.predicted_wqi_range[1]})`
                                     : '-'}
                             </td>
                         </tr>

@@ -1,82 +1,56 @@
 import os
-
+import json
 import joblib
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
+import numpy as np
+
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
-import numpy as np
-from datetime import datetime
-
-from app.infrastructure.persistence.mongo.connection import get_mongo_database
+from sklearn.preprocessing import StandardScaler
 
 
 FEATURE_COLUMNS = [
-    "Temp",
-    "Turbidity",
-    "DO",
-    "BOD",
-    "CO2",
-    "pH",
-    "Alkalinity",
-    "Hardness",
-    "Calcium",
-    "Ammonia",
-    "Nitrite",
-    "Phosphorus",
-    "H2S",
-    "Plankton",
+    "Temp", "Turbidity", "DO", "BOD", "CO2",
+    "pH", "Alkalinity", "Hardness", "Calcium",
+    "Ammonia", "Nitrite", "Phosphorus", "H2S", "Plankton",
 ]
 
 
 class AIModelService:
     def __init__(self):
-        self.MODEL_PATH = "water_model.pkl"
-        self.model = None
-        self.load_model()
-    
+        self.MODEL_DIR = "modelsAI"
+        self.models = {}
+        self.metadata = {}
+        self.scaler = None
+
+        os.makedirs(self.MODEL_DIR, exist_ok=True)
+
+        self.load_models()
+
+        # 🔥 Auto train nếu chưa có model
+        if not self.models:
+            print("No models found → training...")
+            self.auto_train()
+            self.load_models()
+
+    # ================= AUTO TRAIN =================
     def auto_train(self):
-        if os.path.exists(self.MODEL_PATH):
-            os.remove(self.MODEL_PATH)
-            print("Removed old model file")
-        
         excel_file = "WQD.xlsx"
-        if os.path.exists(excel_file):
-            print("Training from WQD.xlsx file...")
-            try:
-                df = pd.read_excel(excel_file)
-                result = self.train_model_from_dataframe(df)
-                if "error" not in result:
-                    print("Auto-trained AI model from WQD.xlsx")
-                    return
-                else:
-                    print(f"Failed to train from WQD.xlsx: {result['error']}")
-            except Exception as e:
-                print(f"Error reading WQD.xlsx: {e}")
-        
-        # print("Training from database...")
-        # result = self.train_model_from_db()
-        # if "error" not in result:
-        #     print("Auto-trained AI model from database")
-        # else:
-        #     print("No labeled data available for training - model not loaded")
 
-    def load_model(self):
-        if os.path.exists(self.MODEL_PATH):
-            self.model = joblib.load(self.MODEL_PATH)
+        if not os.path.exists(excel_file):
+            print("No training file found")
+            return {"error": "No training data"}
 
-    def test_db(self):
-        db = get_mongo_database()
-        if db is None:
-            return {"error": "MongoDB not connected"}
-        count = db.get_collection("predictions").count_documents({})
-        return {"record_count": int(count)}
-
-    def train_model_from_file(self, file):
-        df = pd.read_excel(file)
+        df = pd.read_excel(excel_file)
         return self.train_model_from_dataframe(df)
 
+    # ================= TRAIN =================
     def train_model_from_dataframe(self, df):
+        # Clean column name
         df.columns = (
             df.columns
             .str.replace(r"\(.*?\)", "", regex=True)
@@ -85,141 +59,248 @@ class AIModelService:
         )
 
         if "Water Quality" not in df.columns:
-            return {"error": "File must contain a 'Water Quality' column"}
+            return {"error": "Missing 'Water Quality'"}
+
+        # đảm bảo đủ cột
+        for col in FEATURE_COLUMNS:
+            if col not in df.columns:
+                df[col] = 0
+
+        df = df.fillna(0)
 
         X = df[FEATURE_COLUMNS]
         y = df["Water Quality"]
 
-        if len(X) < 2:
-            return {"error": "Need at least 2 samples for training"}
+        # ===== SCALER =====
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
 
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42
-        )
+        scaler_path = os.path.join(self.MODEL_DIR, "scaler.pkl")
+        joblib.dump(scaler, scaler_path)
 
-        self.model = RandomForestClassifier()
-        self.model.fit(X_train, y_train)
-
-        acc = accuracy_score(y_test, self.model.predict(X_test))
-        joblib.dump(self.model, self.MODEL_PATH)
-
-        return {
-            "message": "Model trained successfully from Excel file",
-            "accuracy": float(acc),
+        models = {
+            "RandomForest": RandomForestClassifier(),
+            "GradientBoosting": GradientBoostingClassifier(),
+            "LogisticRegression": LogisticRegression(max_iter=1000),
+            "SVM": SVC(probability=True),
+            "KNN": KNeighborsClassifier(),
         }
 
-    def train_model_from_db(self):
-        db = get_mongo_database()
-        if db is None:
-            return {"error": "MongoDB not connected"}
+        metadata = {}
 
-        coll = db.get_collection("predictions")
-        cursor = coll.find({"quality_name": {"$exists": True, "$ne": None}})
-        docs = list(cursor)
+        for name, model in models.items():
 
-        if not docs:
-            return {"error": "No labeled data available for training"}
+            if name in ["LogisticRegression", "SVM", "KNN"]:
+                model.fit(X_scaled, y)
+                preds = model.predict(X_scaled)
+                use_scaler = True
+            else:
+                model.fit(X, y)
+                preds = model.predict(X)
+                use_scaler = False
 
-        df = pd.DataFrame([
-            {
-                **{col: (doc.get(col) if doc.get(col) is not None else 0) for col in FEATURE_COLUMNS},
-                "label": doc.get("quality_name"),
+            acc = accuracy_score(y, preds)
+
+            path = os.path.join(self.MODEL_DIR, f"{name}.pkl")
+            joblib.dump(model, path)
+
+            metadata[name] = {
+                "accuracy": float(acc),
+                "path": path,
+                "use_scaler": use_scaler
             }
-            for doc in docs
-        ])
 
-        X = df[FEATURE_COLUMNS]
-        y = df["label"]
+        # save metadata
+        with open(os.path.join(self.MODEL_DIR, "metadata.json"), "w") as f:
+            json.dump(metadata, f, indent=2)
 
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42
-        )
-
-        self.model = RandomForestClassifier()
-        self.model.fit(X_train, y_train)
-
-        acc = accuracy_score(y_test, self.model.predict(X_test))
-        joblib.dump(self.model, self.MODEL_PATH)
+        self.metadata = metadata
+        self.load_models()
 
         return {
-            "message": "Model trained successfully from DB",
-            "accuracy": float(acc),
+            "message": "All models trained & saved",
+            "accuracies": {k: v["accuracy"] for k, v in metadata.items()}
         }
 
-    def predict(self, data):
-        if self.model is None:
-            self.load_model()
-            if self.model is None:
-                self.auto_train()
-                if self.model is None:
-                    return {"error": "Model not loaded"}
+    # ================= LOAD =================
+    def load_models(self):
+        self.models = {}
 
+        metadata_path = os.path.join(self.MODEL_DIR, "metadata.json")
+        scaler_path = os.path.join(self.MODEL_DIR, "scaler.pkl")
+
+        if os.path.exists(scaler_path):
+            self.scaler = joblib.load(scaler_path)
+
+        if not os.path.exists(metadata_path):
+            return
+
+        with open(metadata_path, "r") as f:
+            self.metadata = json.load(f)
+
+        for name, info in self.metadata.items():
+            if os.path.exists(info["path"]):
+                try:
+                    self.models[name] = joblib.load(info["path"])
+                except Exception as e:
+                    print(f"Failed to load {name}: {e}")
+
+        print("Loaded models:", list(self.models.keys()))
+
+    # ================= PREDICT =================
+    def predict(self, data, model_name=None):
+        if not self.models:
+            return {"error": "No models loaded"}
+
+        # chuẩn hóa input
         features = {col: float(data.get(col, 0)) for col in FEATURE_COLUMNS}
         df = pd.DataFrame([features])
+        df_scaled = self.scaler.transform(df) if self.scaler else df
 
-        # prediction is value 0,1,2 for Excellent, Good, Poor respectively. 
-        # We will convert it to WQI score and label in the response
-        prediction = self.model.predict(df)[0]
+        # chọn model
+        if model_name:
+            if model_name not in self.models:
+                return {"error": "Model not found"}
+            selected = {model_name: self.models[model_name]}
+        else:
+            selected = self.models
 
-        proba = self.model.predict_proba(df)[0]
-        proba = np.asarray(proba, dtype=float)
+        results = []
 
-        class_values = self.model.classes_
-        expected_class = float(np.dot(proba, class_values))
+        for name, model in selected.items():
 
-        # wqi_score is calculated as a weighted score based on the expected class value, normalized to a 0-100 scale
-        wqi_score = (1 - expected_class / 2.0) * 100
+            if self.metadata.get(name, {}).get("use_scaler"):
+                input_data = df_scaled
+            else:
+                input_data = df
 
-        # confidence %
-        max_p = float(np.max(proba))
-        confidence_score = max_p * 100.0
+            prediction = model.predict(input_data)[0]
 
-        wqi_label = self.getWqiLabel(wqi_score)
-        risk_status, risk_level = self.getRiskFromWQILabel(wqi_label)
+            # safe predict_proba
+            if hasattr(model, "predict_proba"):
+                proba = model.predict_proba(input_data)[0]
+            else:
+                proba = np.ones(len(model.classes_)) / len(model.classes_)
 
-        # forecast_24h range is calculated based on the confidence of the prediction
-        # if confidence is high, we expect less variation in the next 24h, if confidence is low, we expect more variation.
-        # The range is centered around the predicted WQI score and expands more if confidence is low.
-        delta = max(1.0, (1.0 - max_p) * 10.0)
-        low = max(0.0, wqi_score - delta)
-        high = min(100.0, wqi_score + delta)
+            proba = np.asarray(proba)
+            class_values = model.classes_
 
-        # trend is stable if delta is small, unstable if delta is large
+            expected_class = float(np.dot(proba, class_values))
+            wqi_score = (1 - expected_class / 2.0) * 100
+
+            max_p = float(np.max(proba))
+            confidence = max_p * 100.0
+
+            label = self.getWqiLabel(wqi_score)
+            risk_status, risk_level = self.getRiskFromWQILabel(label)
+
+            delta = max(1.0, (1.0 - max_p) * 10.0)
+            low = max(0.0, wqi_score - delta)
+            high = min(100.0, wqi_score + delta)
+
+            trend = "Stable" if delta <= 3.0 else "Unstable"
+
+            results.append({
+                "model": name,
+                "accuracy": self.metadata.get(name, {}).get("accuracy", 0),
+                "confidence": confidence,
+
+                "wqi": {
+                    "prediction": int(prediction),
+                    "score": float(wqi_score),
+                    "label": label
+                },
+
+                "risk": {
+                    "status": risk_status,
+                    "level": risk_level
+                },
+
+                "forecast_24h": {
+                    "trend": trend,
+                    "predicted_wqi_range": [float(low), float(high)],
+                    "model_used": name,
+                    "confidence_score": confidence
+                }
+            })
+
+        # sort model tốt nhất
+        results.sort(key=lambda x: (x["confidence"], x["accuracy"]), reverse=True)
+
+        best = results[0]
+
+        # ================= ENSEMBLE =================
+        total = 0
+        weight_sum = 0
+
+        for m in results:
+            w = m["accuracy"]
+            total += m["wqi"]["score"] * w
+            weight_sum += w
+
+        ensemble_score = total / weight_sum if weight_sum > 0 else 0
+
+        ensemble_label = self.getWqiLabel(ensemble_score)
+        risk_status, risk_level = self.getRiskFromWQILabel(ensemble_label)
+
+        ensemble_conf = np.mean([m["confidence"] for m in results])
+
+        delta = max(1.0, (1.0 - ensemble_conf / 100.0) * 10.0)
+        low = max(0.0, ensemble_score - delta)
+        high = min(100.0, ensemble_score + delta)
+
         trend = "Stable" if delta <= 3.0 else "Unstable"
 
         return {
-            "wqi": {"prediction": int(prediction),"score": float(wqi_score), "max": 100, "label": wqi_label},
-            "contamination_risk": {"status": risk_status, "risk_level": int(risk_level)},
-            "forecast_24h": {
-                "trend": trend,
-                "predicted_wqi_range": [float(low), float(high)],
-                "model_used": "Random Forest",
-                "confidence_score": float(confidence_score),
+            "best_model": best["model"],
+            "models": results,
+
+            "ensemble": {
+                "wqi": {
+                    "score": float(ensemble_score),
+                    "label": ensemble_label
+                },
+                "risk": {
+                    "status": risk_status,
+                    "level": risk_level
+                },
+                "confidence": float(ensemble_conf),
+                "forecast_24h": {
+                    "trend": trend,
+                    "predicted_wqi_range": [float(low), float(high)]
+                }
             },
-            "solution": self._solution_for(wqi_label),
+
+            "summary": {
+                "wqi": best["wqi"],
+                "risk": best["risk"],
+                "forecast_24h": best["forecast_24h"],
+                "confidence": best["confidence"],
+                "solution": self.solution_for(label),
+            }
         }
-        
-    def getWqiLabel(self, wqi_score: float) -> str:
-        if wqi_score >= 90:
+
+    # ================= HELPER =================
+    def getWqiLabel(self, score):
+        if score >= 90:
             return "Excellent"
-        if wqi_score >= 70:
+        if score >= 70:
             return "Good"
-        if wqi_score >= 50:
-            return "Poor"
         return "Poor"
 
-    def getRiskFromWQILabel(self, label: str):
+    def getRiskFromWQILabel(self, label):
         mapping = {
             "Excellent": ("Low Risk", 0),
             "Good": ("Medium Risk", 1),
             "Poor": ("High Risk", 2),
         }
         return mapping.get(label, ("Unknown", 7))
-
-    def _solution_for(self, quality_name: str) -> str:
+    
+    
+    def solution_for(self, quality_name: str) -> str:
         mapping = {
-            "Good": "Monitor regularly.",
-            "Moderate": "Consider treatment.",
+            "Excellent": "Monitor regularly.",
+            "Good": "Consider treatment.",
             "Poor": "Immediate action required.",
         }
         return mapping.get(quality_name, "Check water quality parameters and adjust accordingly.")

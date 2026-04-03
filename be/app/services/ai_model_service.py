@@ -31,7 +31,6 @@ class AIModelService:
 
         self.load_models()
 
-        # 🔥 Auto train nếu chưa có model
         if not self.models:
             print("No models found → training...")
             self.auto_train()
@@ -50,7 +49,6 @@ class AIModelService:
 
     # ================= TRAIN =================
     def train_model_from_dataframe(self, df):
-        # Clean column name
         df.columns = (
             df.columns
             .str.replace(r"\(.*?\)", "", regex=True)
@@ -61,7 +59,6 @@ class AIModelService:
         if "Water Quality" not in df.columns:
             return {"error": "Missing 'Water Quality'"}
 
-        # đảm bảo đủ cột
         for col in FEATURE_COLUMNS:
             if col not in df.columns:
                 df[col] = 0
@@ -110,7 +107,6 @@ class AIModelService:
                 "use_scaler": use_scaler
             }
 
-        # save metadata
         with open(os.path.join(self.MODEL_DIR, "metadata.json"), "w") as f:
             json.dump(metadata, f, indent=2)
 
@@ -152,12 +148,10 @@ class AIModelService:
         if not self.models:
             return {"error": "No models loaded"}
 
-        # chuẩn hóa input
         features = {col: float(data.get(col, 0)) for col in FEATURE_COLUMNS}
         df = pd.DataFrame([features])
         df_scaled = self.scaler.transform(df) if self.scaler else df
 
-        # chọn model
         if model_name:
             if model_name not in self.models:
                 return {"error": "Model not found"}
@@ -176,7 +170,6 @@ class AIModelService:
 
             prediction = model.predict(input_data)[0]
 
-            # safe predict_proba
             if hasattr(model, "predict_proba"):
                 proba = model.predict_proba(input_data)[0]
             else:
@@ -224,7 +217,6 @@ class AIModelService:
                 }
             })
 
-        # sort model tốt nhất
         results.sort(key=lambda x: (x["confidence"], x["accuracy"]), reverse=True)
 
         best = results[0]

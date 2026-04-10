@@ -50,8 +50,11 @@ export function LoginPage() {
         // 3. Tiến hành gọi API nếu dữ liệu hợp lệ
         setIsLoading(true);
         try {
-            const success = await authService.login(email, password);
-            if (success) {
+            const role = await authService.login(email, password);
+
+            if (role === 'admin') {
+                navigate('/admin');
+            } else if (role === 'user') {
                 navigate('/');
             } else {
                 setPasswordError('Mật khẩu bạn đã nhập không chính xác.');
@@ -238,7 +241,10 @@ export function LoginPage() {
 
                 {/* Footer của Card */}
                 <div className="login-footer">
-                    <p style={{ margin: 0 }}>
+                    <p style={{ margin: 0,
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                            }}>
                         System requires authorized personnel access.
                     </p>
                 </div>

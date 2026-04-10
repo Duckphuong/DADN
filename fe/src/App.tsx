@@ -6,6 +6,7 @@ import {
     Route,
     Navigate,
 } from 'react-router-dom';
+import { Admin } from './pages/AdminPage';  
 import { Header } from './components/Header';
 import { SensorCard } from './components/SensorCard';
 import { WaterClassificationPanel } from './components/WaterClassificationPanel';
@@ -15,7 +16,7 @@ import { MapVisualization } from './components/MapVisualization';
 import { AlertsPanel } from './components/AlertsPanel';
 import { SystemArchitecture } from './components/SystemArchitecture';
 import { Footer } from './components/Footer';
-import { LoginPage } from './components/LoginPage'; // Đảm bảo tên export là đúng
+import { LoginPage } from './pages/LoginPage';
 import { Droplet, Thermometer, Zap, Eye, Wind, Waves } from 'lucide-react';
 import Predict from './components/Predict';
 import PredictTable from './components/PredictTable';
@@ -23,7 +24,20 @@ import PredictTable from './components/PredictTable';
 // check authorize
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
     const isAuthenticated = document.cookie.includes('user_session'); // Check for cookie
+    if (!isAuthenticated) return <Navigate to="/login" replace />;
+
     return isAuthenticated ? children : <Navigate to="/login" replace />;
+};
+
+// check role
+const AdminProtectedRoute = ({ children }: { children: JSX.Element }) => {
+    const isAuthenticated = document.cookie.includes('user_session');
+    const isAdmin = document.cookie.includes('user_role=admin');
+    
+    if (!isAuthenticated) return <Navigate to="/login" replace />;
+    if (!isAdmin) return <Navigate to="/" replace />;
+    
+    return children;
 };
 
 // Main Page (Dashboard)
@@ -167,6 +181,9 @@ const Dashboard = () => {
     );
 };
 
+
+
+
 export default function App() {
     return (
         <Router>
@@ -174,7 +191,7 @@ export default function App() {
                 {/* Route for Login */}
                 <Route path="/login" element={<LoginPage />} />
 
-                {/* Route for MainPage (Dashboard) */}
+                {/* Route for User -> MainPage (Dashboard) */}
                 <Route
                     path="/"
                     element={
@@ -183,6 +200,13 @@ export default function App() {
                         </ProtectedRoute>
                     }
                 />
+
+                {/* Route for Admin */}
+                <Route path="/admin" element={
+                    <AdminProtectedRoute>
+                        {/* <Dashboard /> */}
+                        <Admin />
+                    </AdminProtectedRoute>} />
 
                 {/* Chuyển hướng các đường dẫn lạ về trang chính */}
                 <Route path="*" element={<Navigate to="/" />} />

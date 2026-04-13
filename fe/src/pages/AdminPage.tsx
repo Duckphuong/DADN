@@ -34,7 +34,7 @@ interface User {
   id: string;
   name: string;
   email: string;
-  role: 'Admin' | 'Analyst' | 'Viewer';
+  role: 'ADMIN' | 'Analyst' | 'Viewer';
   status: 'Active' | 'Inactive';
   lastActive: string;
 }
@@ -44,7 +44,7 @@ const INITIAL_USERS: User[] = [
     id: '1',
     name: 'Sarah Jenkins',
     email: 'sarah.j@waterquality.gov',
-    role: 'Admin',
+    role: 'ADMIN',
     status: 'Active',
     lastActive: 'Just now',
   },
@@ -255,7 +255,7 @@ export function Admin() {
                       <TableCell className="text-center">
                         {(() => {
                           const styles = {
-                            Admin: { backgroundColor: '#f3e8ff', color: '#7e22ce', border: '1px solid #e9d5ff' },
+                            ADMIN: { backgroundColor: '#f3e8ff', color: '#7e22ce', border: '1px solid #e9d5ff' },
                             Analyst: { backgroundColor: '#dbeafe', color: '#1d4ed8', border: '1px solid #bfdbfe' },
                             Viewer: { backgroundColor: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0' },
                           };

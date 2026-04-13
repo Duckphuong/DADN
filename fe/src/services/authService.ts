@@ -1,50 +1,76 @@
 // src/services/authService.ts
 
+import api from './api';
+
 export const authService = {
     /**
-     * Hàm đăng nhập: Trả về role của user nếu thành công, ngược lại trả về null
+     * Đăng nhập người dùng
+     * Trả về: role của user nếu thành công, null nếu thất bại
      */
     login: async (email: string, password: string): Promise<string | null> => {
-        // Giả lập delay gọi API
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
-        // --- CẤU HÌNH TÀI KHOẢN MẪU (Demo) ---
-        const users = [
-            { email: 'admin@gmail.com', password: '123', role: 'admin' },
-            { email: 'abc@gmail.com', password: '123', role: 'user' }
-        ];
-        // ------------------------------------
-
-        const user = users.find(u => u.email === email && u.password === password);
-
-        if (user) {
-            // Lưu session chung
-            document.cookie = 'user_session=true; path=/; max-age=3600; SameSite=Lax';
-            // Lưu role riêng để phân quyền giao diện
-            document.cookie = `user_role=${user.role}; path=/; max-age=3600; SameSite=Lax`;
+        try {
+            const response = await api.post('/auth/login', { email, password });
             
-            return user.role;
+            const { access_token, user } = response.data;
+
+            if (access_token) {
+                // Lưu Token và Role vào Cookie để dùng cho các request và phân quyền frontend
+                document.cookie = `access_token=${access_token}; path=/; max-age=3600; SameSite=Lax`;
+                document.cookie = `user_role=${user.role}; path=/; max-age=3600; SameSite=Lax`;
+                return user.role;
+            }
+            return null;
+        } catch (error) {
+            console.error("Login failed:", error);
+            return null;
         }
-
-        return null;
     },
 
     /**
-     * Đăng xuất: Xóa sạch các cookie liên quan
+     * Đăng ký tài khoản mới
+     * Trả về: role của user sau khi đăng ký thành công, null nếu thất bại
      */
-    logout: () => {
-        document.cookie = 'user_session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
-        document.cookie = 'user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
-        window.location.href = '/login';
+    register: async (userData: any): Promise<string | null> => {
+        try {
+            const response = await api.post('/auth/register', userData);
+            const { token, user } = response.data;
+
+            if (token) {
+                document.cookie = `access_token=${token}; path=/; max-age=3600; SameSite=Lax`;
+                document.cookie = `user_role=${user.role}; path=/; max-age=3600; SameSite=Lax`;
+                return user.role;
+            }
+            return null;
+        } catch (error) {
+            console.error("Registration failed:", error);
+            return null;
+        }
     },
 
     /**
-     * Kiểm tra đã đăng nhập hay chưa
+     * Đăng xuất người dùng
+     */
+    logout: async () => {
+        try {
+            // Gọi API logout để backend xử lý (nếu có logic hủy session/token)
+            await api.post('/auth/logout');
+        } catch (error) {
+            console.error("Logout API call failed:", error);
+        } finally {
+            // Luôn xóa cookie và chuyển hướng về trang login dù API có lỗi hay không
+            document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
+            document.cookie = 'user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;';
+            window.location.href = '/login';
+        }
+    },
+
+    /**
+     * Kiểm tra trạng thái đăng nhập dựa trên sự tồn tại của access_token
      */
     isAuthenticated: (): boolean => {
         return document.cookie
             .split(';')
-            .some((item) => item.trim().startsWith('user_session='));
+            .some((item) => item.trim().startsWith('access_token='));
     },
 
     /**
@@ -58,9 +84,9 @@ export const authService = {
     },
 
     /**
-     * Kiểm tra nhanh xem có phải Admin không
+     * Kiểm tra nhanh xem người dùng hiện tại có phải Admin không
      */
     isAdmin: (): boolean => {
-        return authService.getUserRole() === 'admin';
+        return authService.getUserRole() === 'ADMIN';
     }
 };

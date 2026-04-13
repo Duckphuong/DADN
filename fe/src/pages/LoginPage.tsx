@@ -52,9 +52,9 @@ export function LoginPage() {
     try {
       const role = await authService.login(email, password);
 
-      if (role === 'admin') {
+      if (role === 'ADMIN') {
         navigate('/admin');
-      } else if (role === 'user') {
+      } else if (role === 'USER') {
         navigate('/');
       } else {
         setPasswordError('Wrong password');
@@ -138,7 +138,11 @@ export function LoginPage() {
                     setEmail(e.target.value);
                     if (emailError) setEmailError('');
                   }}
-                  className={`login-input-field ${emailError ? 'border-red-500' : ''}`}
+                  className={`login-input-field ${
+                    emailError
+                      ? 'border-red-500 border-2 focus:border-red-500'
+                      : 'border-gray-300 border-2 focus:border-cyan-500'
+                  }`}
                   style={
                     emailError
                       ? { borderColor: '#dc2626' }
@@ -146,7 +150,7 @@ export function LoginPage() {
                   }
                   placeholder="abc@gmail.com"
                 />
-                <Mail className="absolute" size={18} />
+                <Mail className={`absolute ${emailError ? 'text-red-500' : ''}`} size={18} />
               </div>
             </div>
 
@@ -171,11 +175,11 @@ export function LoginPage() {
                   className={`login-input-field w-full outline-none transition-colors ${
                     passwordError
                       ? 'border-red-500 border-2 focus:border-red-500'
-                      : 'border-gray-300'
+                      : 'border-gray-300 border-2 focus:border-cyan-500'
                   }`}
                 />
                 <Lock
-                  className={`absolute left-3 top-1/2 -translate-y-1/2 ${passwordError ? 'text-red-500' : 'text-gray-400'}`}
+                  className={`absolute ${passwordError ? 'text-red-500' : ''}`}
                   size={18}
                 />
               </div>
@@ -183,57 +187,57 @@ export function LoginPage() {
 
             {/* Remember Me & Forgot Password */}
             <div
-                style={{
-                    display: 'flex',
-                    width: '100%',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                }}
+              style={{
+                display: 'flex',
+                width: '100%',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
             >
-                <div
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                    }}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 rounded"
+                />
+                <span style={{ fontSize: '14px' }}>
+                  Remember me
+                </span>
+              </div>
+              <div
+                style={{ fontSize: '14px', fontWeight: '500' }}
+              >
+                <a
+                  href="#"
+                  style={{
+                    color: '#0092b8',
+                    textDecoration: 'none',
+                  }}
+                  className="hover:underline"
                 >
-                    <input
-                        type="checkbox"
-                        className="w-4 h-4 rounded"
-                    />
-                    <span style={{ fontSize: '14px' }}>
-                        Remember me
-                    </span>
-                </div>
-                <div
-                    style={{ fontSize: '14px', fontWeight: '500' }}
-                >
-                    <a
-                        href="#"
-                        style={{
-                            color: '#0092b8',
-                            textDecoration: 'none',
-                        }}
-                        className="hover:underline"
-                    >
-                        Forgot password?
-                    </a>
-                </div>
+                  Forgot password?
+                </a>
+              </div>
             </div>
 
             {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading}
-              className="login-submit-btn"
+              className="login-submit-btn hover:scale-101"
             >
               {isLoading ? (
                 <Loader2 className="animate-spin" size={20} />
               ) : (
-                  <>
-                    <span>Sign In</span>
-                    <ArrowRight size={16} />
-                  </>
+                <>
+                  <span>Sign In</span>
+                  <ArrowRight size={16} />
+                </>
               )}
             </button>
           </form>
@@ -241,12 +245,12 @@ export function LoginPage() {
 
         {/* Footer của Card */}
         <div className="login-footer">
-            <p style={{ margin: 0,
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                    }}>
-                System requires authorized personnel access.
-            </p>
+          <p style={{ margin: 0,
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}>
+            System requires authorized personnel access.
+          </p>
         </div>
       </div>
     </div>

@@ -68,8 +68,8 @@ export function Dashboard(){
 					<h2 className="text-cyan-900 mb-6">
 						Real-Time Sensor Readings
 					</h2>
-						<PredictTable />
-						<Predict />
+						{/* <PredictTable /> */}
+						{/* <Predict /> */}
 						<div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
 							<SensorCard
 								icon={<Droplet className="w-8 h-8" />}

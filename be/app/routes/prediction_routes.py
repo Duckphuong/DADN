@@ -5,7 +5,7 @@ from datetime import datetime
 
 from app.infrastructure.persistence.mongo.connection import get_mongo_database
 from app.services.ai_model_service import AIModelService
-from app.domain.prediction.predict_module import PredictModule
+from app.domain.prediction import PredictModule
 
 prediction_bp = Blueprint('prediction', __name__, url_prefix="/prediction")
 
@@ -36,7 +36,6 @@ def predict():
 
     try:
         db = get_mongo_database()
-       
         if db is not None:
             coll = db.get_collection("predictions")
             doc = {
@@ -57,35 +56,44 @@ def predict():
                 "prediction": result,
                 "created_at": datetime.utcnow(),
             }
-            coll.insert_one(doc)
-            # Create PredictModule
-            predict_module = PredictModule.create_new(
-                wqi_score=result["wqi"]["score"],
-                contamination_risk=result["contamination_risk"]["status"],
-                forecast_24h=result["forecast_24h"]["trend"],
-                predicted_wqi=f"{result['forecast_24h']['predicted_wqi_range'][0]}-{result['forecast_24h']['predicted_wqi_range'][1]}",
-                confidence=result["forecast_24h"]["confidence_score"],
-                message=f"WQI: {result['wqi']['score']}, Risk: {result['contamination_risk']['status']}",
-                input_sensor_id="temp",  # placeholder
-                id_sensor="sensor1",  # placeholder
-            )
-            coll_ = db.get_collection("predictModule")
-            doc_ = {
-                "wqi_score": predict_module.wqi_score,
-                "contamination_risk": predict_module.contamination_risk,
-                "forecast_24h": predict_module.forecast_24h,
-                "predicted_wqi": predict_module.predicted_wqi,
-                "confidence": predict_module.confidence,
-                "message": predict_module.message,
-                "status": predict_module.status,
-                "time_ago": predict_module.time_ago,
-                "inputSensorId": predict_module.input_sensor_id,
-                "idSensor": predict_module.id_sensor,
-                "is_email_processed": predict_module.is_email_processed,
-                "created_at": predict_module.created_at,
-                "updated_at": predict_module.updated_at,
-            }
-            coll_.insert_one(doc_)
+            insert_result = coll.insert_one(doc)
+            saved_prediction_id = str(insert_result.inserted_id)
+
+            # Create alert if conditions are met
+            wqi_score = result["wqi"]["score"]
+            risk_status = result["contamination_risk"]["status"]
+            
+            if wqi_score < 50 or risk_status in ["High Risk", "Critical"]:
+                actual_sensor_id = data.get("sensorId", "unknown")
+
+                predict_module = PredictModule.create_new(
+                    wqi_score=wqi_score,
+                    contamination_risk=risk_status,
+                    forecast_24h=result["forecast_24h"]["trend"],
+                    predicted_wqi=f"{result['forecast_24h']['predicted_wqi_range'][0]}-{result['forecast_24h']['predicted_wqi_range'][1]}",
+                    confidence=result["forecast_24h"]["confidence_score"],
+                    message=f"WQI: {wqi_score}, Risk: {risk_status}",
+                    input_sensor_id=saved_prediction_id,
+                    id_sensor=actual_sensor_id,
+                )
+                
+                predict_coll = db.get_collection("predict_module")
+                predict_doc = {
+                    "wqi_score": predict_module.wqi_score,
+                    "contamination_risk": predict_module.contamination_risk,
+                    "forecast_24h": predict_module.forecast_24h,
+                    "predicted_wqi": predict_module.predicted_wqi,
+                    "confidence": predict_module.confidence,
+                    "message": predict_module.message,
+                    "status": predict_module.status,
+                    "time_ago": predict_module.time_ago,
+                    "inputSensorId": predict_module.input_sensor_id,
+                    "idSensor": predict_module.id_sensor,
+                    "is_email_processed": predict_module.is_email_processed,
+                    "created_at": predict_module.created_at,
+                    "updated_at": predict_module.updated_at,
+                }
+                predict_coll.insert_one(predict_doc)
     except Exception as e:
         print(f"Error saving prediction: {e}")
 

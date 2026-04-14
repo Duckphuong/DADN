@@ -8,6 +8,7 @@ from app.infrastructure.persistence.mongo.connection import get_mongo_state, ini
 from app.presentation.http.routes.auth_routes import auth_bp
 from app.presentation.http.routes.sensor_station_routes import sensor_station_bp
 from app.routes.prediction_routes import prediction_bp
+from app.presentation.http.routes.sensor_data_routes import sensor_data_bp
 from app.routes.alert_routes import alert_bp
 from app.services.alert_service import AlertService
 
@@ -23,6 +24,7 @@ def create_app():
     app.register_blueprint(auth_bp)
     app.register_blueprint(sensor_station_bp)
     app.register_blueprint(prediction_bp)
+    app.register_blueprint(sensor_data_bp)
     app.register_blueprint(alert_bp)
     
     # Start alert service scheduler
@@ -33,8 +35,13 @@ def create_app():
         password=app.config['PASSWORD'],
         alert_email_to=app.config['ALERT_EMAIL_TO']
     )
+    
+    def scheduled_task():
+        with app.app_context():
+            alert_service.check_and_send_alerts()
+
     scheduler = BackgroundScheduler()
-    scheduler.add_job(func=alert_service.check_and_send_alerts, trigger="interval", minutes=1)
+    scheduler.add_job(func=scheduled_task, trigger="interval", minutes=1)
     scheduler.start()
     @app.route("/")
     def home():

@@ -173,3 +173,6 @@ Khi thêm tính năng mới, hãy tuân theo trình tự:
 ```
 
 ```
+
+## ERD
+link erd: https://drive.google.com/file/d/1K8EVtyi5xTBa0v6GMxgX_m5VM2c7QnFi/view?usp=sharing

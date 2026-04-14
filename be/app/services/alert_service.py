@@ -17,13 +17,13 @@ class AlertService:
         self.last_email_time = None  # Track last email sent time
 
     def check_and_send_alerts(self):
-        """Check predictModule for unprocessed alerts and send emails if needed."""
+        """Check predict_module for unprocessed alerts and send emails if needed."""
         db = get_mongo_database()
         if db is None:
             print("MongoDB not connected")
             return
 
-        coll = db.get_collection("predictModule")
+        coll = db.get_collection("predict_module")
         # Find unprocessed predictions
         cursor = coll.find({"is_email_processed": False})
         for doc in cursor:

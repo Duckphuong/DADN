@@ -28,7 +28,26 @@ class AlertService:
         cursor = coll.find({"is_email_processed": False})
         for doc in cursor:
             if self._should_send_alert(doc):
-                self._send_alert_email(doc)
+                target_email = self.alert_email_to # Fallback nếu không tìm thấy
+                try:
+                    sensor_id = doc.get("id_sensor") or doc.get("input_sensor_id")
+                    if sensor_id:
+                        from bson import ObjectId
+                        
+                        s_id = ObjectId(sensor_id) if isinstance(sensor_id, str) and len(sensor_id) == 24 else sensor_id
+                        sensor = db.get_collection("sensor_informations").find_one({"_id": s_id})
+                        
+                        if sensor and "userId" in sensor:
+                            owner_id = sensor.get("userId")
+                            o_id = ObjectId(owner_id) if isinstance(owner_id, str) and len(owner_id) == 24 else owner_id
+                            user = db.get_collection("users").find_one({"_id": o_id})
+                            
+                            if user and "email" in user:
+                                target_email = user.get("email")
+                except Exception as e:
+                    print(f"Error fetching target email from DB: {e}")
+
+                self._send_alert_email(doc, target_email)
                 # Update to processed
                 coll.update_one({"_id": doc["_id"]}, {"$set": {"is_email_processed": True}})
                 self.last_email_time = datetime.utcnow()
@@ -52,14 +71,14 @@ class AlertService:
                 return time_diff >= timedelta(hours=2)
         return False
 
-    def _send_alert_email(self, doc):
+    def _send_alert_email(self, doc, target_email):
         """Send alert email."""
         subject = "Water Quality Alert"
         body = self._generate_email_body(doc)
 
         msg = MIMEMultipart()
         msg['From'] = self.email
-        msg['To'] = self.alert_email_to
+        msg['To'] = target_email
         msg['Subject'] = subject
 
         msg.attach(MIMEText(body, 'plain'))
@@ -69,9 +88,9 @@ class AlertService:
             server.starttls()
             server.login(self.email, self.password)
             text = msg.as_string()
-            server.sendmail(self.email, self.alert_email_to, text)
+            server.sendmail(self.email, target_email, text)
             server.quit()
-            print("Alert email sent successfully")
+            print(f"Alert email sent successfully to {target_email}")
         except Exception as e:
             print(f"Failed to send email: {e}")
 

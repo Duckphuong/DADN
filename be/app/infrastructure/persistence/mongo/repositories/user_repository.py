@@ -56,3 +56,30 @@ class MongoUserRepository(UserRepository):
             self._indexes_ready = True
 
         return collection
+
+# Add
+    def get_all(self) -> list[User]:
+        collection = self._get_collection()
+        try:
+            cursor = collection.find()
+            return [UserDocumentMapper.to_entity(doc) for doc in cursor]
+        except PyMongoError as exc:
+            raise InfrastructureError("Failed to fetch users") from exc
+
+    def update(self, user: User) -> User:
+        collection = self._get_collection()
+        object_id = parse_object_id(user.id)
+        try:
+            collection.replace_one({"_id": object_id}, UserDocumentMapper.to_document(user))
+            return user
+        except PyMongoError as exc:
+            raise InfrastructureError("Failed to update user") from exc
+
+    def delete(self, user_id: str) -> bool:
+        collection = self._get_collection()
+        object_id = parse_object_id(user_id)
+        try:
+            result = collection.delete_one({"_id": object_id})
+            return result.deleted_count > 0
+        except PyMongoError as exc:
+            raise InfrastructureError("Failed to delete user") from exc

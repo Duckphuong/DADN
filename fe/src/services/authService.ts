@@ -33,11 +33,8 @@ export const authService = {
     register: async (userData: any): Promise<string | null> => {
         try {
             const response = await api.post('/auth/register', userData);
-            const { token, user } = response.data;
-
-            if (token) {
-                document.cookie = `access_token=${token}; path=/; max-age=3600; SameSite=Lax`;
-                document.cookie = `user_role=${user.role}; path=/; max-age=3600; SameSite=Lax`;
+            const user = response.data.user;
+            if(user){
                 return user.role;
             }
             return null;

@@ -108,3 +108,35 @@ class AuthenticateUserUseCase:
 class LogoutUserUseCase:
     def execute(self) -> str:
         return "Logout successful. Remove the token on the client."
+
+# Add
+class ListUsersUseCase:
+    def __init__(self, user_repository: UserRepository) -> None:
+        self._user_repository = user_repository
+
+    def execute(self) -> list[User]:
+        return self._user_repository.get_all()
+
+class UpdateUserUseCase:
+    def __init__(self, user_repository: UserRepository) -> None:
+        self._user_repository = user_repository
+
+    def execute(self, user_id: str, data: dict) -> User:
+        user = self._user_repository.get_by_id(user_id)
+        if not user:
+            raise NotFoundError("User not found")
+        
+        # Cập nhật thông tin từ data (dict)
+        if "fullName" in data: user.full_name = data["fullName"]
+        if "role" in data: user.role = data["role"]
+        if "status" in data: user.is_active = (data["status"] == "ACTIVE")
+        if "phoneNumber" in data: user.phone_number = data["phoneNumber"]
+        
+        return self._user_repository.update(user)
+
+class DeleteUserUseCase:
+    def __init__(self, user_repository: UserRepository) -> None:
+        self._user_repository = user_repository
+
+    def execute(self, user_id: str) -> bool:
+        return self._user_repository.delete(user_id)

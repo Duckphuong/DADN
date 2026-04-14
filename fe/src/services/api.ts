@@ -24,6 +24,60 @@ api.interceptors.request.use((config) => {
 export default api;
 
 /**
+ * User Management Services (Dành cho Admin)
+ */
+export const userService = {
+    /**
+     * Lấy danh sách toàn bộ người dùng
+     * Endpoint tương ứng: GET /auth/users (Bạn cần tạo route này ở backend)
+     */
+    getAllUsers: async () => {
+        const res = await api.get('/auth/users');
+        return res.data;
+    },
+
+    /**
+     * Lấy thông tin chi tiết một người dùng theo ID
+     */
+    getUserById: async (id: string) => {
+        const res = await api.get(`/auth/users/${id}`);
+        return res.data;
+    },
+
+    /**
+     * Cập nhật thông tin người dùng (fullName, phoneNumber, urlAvatar, role, status)
+     * Backend sẽ sử dụng các trường từ User Domain
+     */
+    updateUser: async (id: string, userData: {
+        fullName?: string;
+        phoneNumber?: string;
+        urlAvatar?: string;
+        role?: 'ADMIN' | 'MANAGER' | 'USER'; // Khớp với normalize_role
+        status?: 'ACTIVE' | 'INACTIVE';      // Khớp với DEFAULT_USER_STATUS
+    }) => {
+        const res = await api.patch(`/auth/users/${id}`, userData);
+        return res.data;
+    },
+
+    /**
+     * Xóa người dùng
+     */
+    deleteUser: async (id: string) => {
+        const res = await api.delete(`/auth/users/${id}`);
+        return res.data;
+    },
+
+    /**
+     * Lấy thông tin người dùng hiện tại (Profile)
+     */
+    getCurrentUser: async () => {
+        const res = await api.get('/auth/me'); // Thường gọi đến AuthenticateUserUseCase
+        return res.data;
+    }
+};
+
+
+/**
  * AI Prediction Services
  */
 export const getHistory = async (): Promise<HistoryData[]> => {

@@ -1,3 +1,5 @@
+import React, {useEffect, useState } from 'react';
+import { alertService } from '../services/api';
 import { AlertTriangle, AlertCircle, Info, XCircle, Bell } from 'lucide-react';
 
 const alerts = [

@@ -12,3 +12,8 @@ class UserRepository(Protocol):
 
     def create(self, user: User) -> User:
         raise NotImplementedError
+
+# Add
+    def get_all(self) -> list[User]: raise NotImplementedError
+    def update(self, user: User) -> User: raise NotImplementedError
+    def delete(self, user_id: str) -> bool: raise NotImplementedError

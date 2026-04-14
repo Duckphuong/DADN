@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, {useEffect, useState } from 'react';
+import { userService } from '../services/api';
+import { authService } from '../services/authService';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { Button } from '../components/ui/button';
@@ -32,42 +34,46 @@ import {
 
 interface User {
   id: string;
-  name: string;
+  fullName: string;
   email: string;
-  role: 'ADMIN' | 'Analyst' | 'Viewer';
-  status: 'Active' | 'Inactive';
-  lastActive: string;
+  role: 'ADMIN' | 'MANAGER' | 'USER';
+  status: 'ACTIVE' | 'INACTIVE';
+  phoneNumber?: string;
+  urlAvatar?: string;
+  lastActive?: string;
 }
 
-const INITIAL_USERS: User[] = [
-  {
-    id: '1',
-    name: 'Sarah Jenkins',
-    email: 'sarah.j@waterquality.gov',
-    role: 'ADMIN',
-    status: 'Active',
-    lastActive: 'Just now',
-  },
-  {
-    id: '2',
-    name: 'Michael Chang',
-    email: 'm.chang@waterquality.gov',
-    role: 'Analyst',
-    status: 'Active',
-    lastActive: '2 hours ago',
-  },
-  {
-    id: '3',
-    name: 'Elena Rodriguez',
-    email: 'elena.r@waterquality.gov',
-    role: 'Viewer',
-    status: 'Inactive',
-    lastActive: '3 days ago',
-  },
-];
+// const INITIAL_USERS: User[] = [
+//   {
+//     id: '1',
+//     name: 'Sarah Jenkins',
+//     email: 'sarah.j@waterquality.gov',
+//     role: 'ADMIN',
+//     status: 'Active',
+//     lastActive: 'Just now',
+//   },
+//   {
+//     id: '2',
+//     name: 'Michael Chang',
+//     email: 'm.chang@waterquality.gov',
+//     role: 'Analyst',
+//     status: 'Active',
+//     lastActive: '2 hours ago',
+//   },
+//   {
+//     id: '3',
+//     name: 'Elena Rodriguez',
+//     email: 'elena.r@waterquality.gov',
+//     role: 'Viewer',
+//     status: 'Inactive',
+//     lastActive: '3 days ago',
+//   },
+// ];
 
 export function Admin() {
-  const [users, setUsers] = useState<User[]>(INITIAL_USERS);
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true); 
+
   const [searchQuery, setSearchQuery] = useState('');
 
   // Dialog states
@@ -80,57 +86,117 @@ export function Admin() {
 
   // Form states
   const [formData, setFormData] = useState({
-    name: '',
+    fullName: '',
     email: '',
-    role: 'Viewer' as User['role'],
-    status: 'Active' as User['status'],
+    phoneNumber: '',
+    role: 'MANAGER' as User['role'],
+    status: 'ACTIVE' as User['status'],
   });
 
   const filteredUsers = users.filter(user => 
-    user.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    user.fullName.toLowerCase().includes(searchQuery.toLowerCase()) || 
     user.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleOpenDialog = (user?: User) => {
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      setIsLoading(true);
+      const data = await userService.getAllUsers();
+      setUsers(data);
+    } catch (error) {
+      console.error("Failed to fetch users:", error);
+      alert("Something went wrong. Please try again later.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this user?')) {
+      try {
+        await userService.deleteUser(id);
+        setUsers(users.filter(u => u.id !== id));
+        alert("User deleted successfully.");
+      } catch (error) {
+        console.error("Delete error:", error);
+        alert("Failed to delete user.");
+      }
+    }
+  };
+
+  const handleOpenDialog = async (user?: User) => {
     setNameError("");
     setEmailError("");
+    
     if (user) {
-      setEditingUser(user);
-      setFormData({
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        status: user.status,
-      });
+      try {
+        // Gọi API để lấy thông tin chi tiết nhất của User trước khi edit
+        const latestUserData = await userService.getUserById(user.id);
+        setEditingUser(latestUserData);
+        setFormData({
+          fullName: latestUserData.fullName,
+          email: latestUserData.email,
+          phoneNumber: latestUserData.phoneNumber || '',
+          role: latestUserData.role,
+          status: latestUserData.status,
+        });
+      } catch (error) {
+        alert("Could not fetch user details.");
+        return;
+      }
     } else {
+      // Logic cho Create New User
       setEditingUser(null);
       setFormData({
-        name: '',
+        fullName: '',
         email: '',
-        role: 'Viewer',
-        status: 'Active',
+        phoneNumber: '',
+        role: 'MANAGER',
+        status: 'ACTIVE',
       });
     }
     setIsDialogOpen(true);
   };
 
-  const handleSaveUser = () => {
-    if (editingUser) {
-      setUsers(users.map(u => u.id === editingUser.id ? { ...u, ...formData } : u));
-    } else {
-      const newUser: User = {
-        id: Math.random().toString(36).substr(2, 9),
-        ...formData,
-        lastActive: 'Never',
-      };
-      setUsers([...users, newUser]);
-    }
-    setIsDialogOpen(false);
-  };
+  const handleSaveUser = async () => {
+    try {
+      if (editingUser) {
+        // TRƯỜNG HỢP UPDATE
+        const updatedUser = await userService.updateUser(editingUser.id, {
+          fullName: formData.fullName,
+          phoneNumber: formData.phoneNumber,
+          role: formData.role,
+          status: formData.status,
+        });
+        
+        setUsers(users.map(u => u.id === editingUser.id ? { ...u, ...updatedUser } : u));
+        alert("User updated successfully!");
+      } else {
+        // TRƯỜNG HỢP CREATE NEW (Sử dụng register)
+        const resultRole = await authService.register({
+          fullName: formData.fullName,
+          email: formData.email,
+          phoneNumber: formData.phoneNumber,
+          role: formData.role,
+          status: formData.status,
+          password: "123"
+        });
 
-  const handleDeleteUser = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this user?')) {
-      setUsers(users.filter(u => u.id !== id));
+        if (resultRole) {
+          alert("User created successfully!");
+          fetchUsers();
+        } else {
+          alert("Failed to create user.");
+        }
+      }
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error("Save error:", error);
+      alert("An error occurred while saving.");
     }
   };
 
@@ -145,7 +211,7 @@ export function Admin() {
   
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    setFormData({ ...formData, name: value });
+    setFormData({ ...formData, fullName: value });
     
     if (nameError) {
       if (value.trim() !== "") {
@@ -163,7 +229,7 @@ export function Admin() {
   };
 
   const onSave = () => {
-    const isNameValid = formData.name.trim() !== "";
+    const isNameValid = formData.fullName.trim() !== "";
     const isEmailValid = validateEmail(formData.email);
 
     if (!isNameValid) {
@@ -247,7 +313,7 @@ export function Admin() {
                             <UserCircle className="w-6 h-6" />
                           </div>
                           <div>
-                            <div className="font-medium text-slate-900">{user.name}</div>
+                            <div className="font-medium text-slate-900">{user.fullName}</div>
                             <div className="text-sm text-slate-500">{user.email}</div>
                           </div>
                         </div>
@@ -256,10 +322,10 @@ export function Admin() {
                         {(() => {
                           const styles = {
                             ADMIN: { backgroundColor: '#f3e8ff', color: '#7e22ce', border: '1px solid #e9d5ff' },
-                            Analyst: { backgroundColor: '#dbeafe', color: '#1d4ed8', border: '1px solid #bfdbfe' },
-                            Viewer: { backgroundColor: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0' },
+                            MANAGER: { backgroundColor: '#dbeafe', color: '#1d4ed8', border: '1px solid #bfdbfe' },
+                            USER: { backgroundColor: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0' },
                           };
-                          const currentStyle = styles[user.role] || styles.Viewer;
+                          const currentStyle = styles[user.role] || styles.USER;
                           return (
                             <Badge
                               style={currentStyle}
@@ -272,11 +338,11 @@ export function Admin() {
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge variant="secondary" className={
-                          user.status === 'Active' 
+                          user.status === 'ACTIVE' 
                             ? 'bg-green-100 text-green-700 hover:bg-green-100 py-1 rounded-xl border-xl border-green-200' 
                             : 'bg-slate-100 text-slate-700 hover:bg-slate-100 py-1 rounded-xl border-xl border-slate-200'
                         }>
-                          <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${user.status === 'Active' ? 'bg-green-500' : 'bg-slate-400'}`}></span>
+                          <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${user.status === 'ACTIVE' ? 'bg-green-500' : 'bg-slate-400'}`}></span>
                           {user.status}
                         </Badge>
                       </TableCell>
@@ -336,7 +402,7 @@ export function Admin() {
               <Input 
                 id="name"
                 className={`rounded-lg ${nameError ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
-                value={formData.name}
+                value={formData.fullName}
                 // onChange={e => setFormData({...formData, name: e.target.value})}
                 onChange={handleNameChange}
                 placeholder="e.g. Jane Doe"
@@ -357,19 +423,35 @@ export function Admin() {
               />
               {emailError && <span className="text-sm text-red-500">{emailError}</span>}
             </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="phoneNumber">Phone Number</Label>
+              <Input 
+                id="phoneNumber" 
+                type="phoneNumber"
+                className={`rounded-lg`}
+                value={formData.phoneNumber}
+                onChange={e => setFormData({...formData, phoneNumber: e.target.value})}
+                onBlur={() => validateEmail(formData.phoneNumber)}
+                placeholder="e.g. 1234567890"
+              />
+              {/* {emailError && <span className="text-sm text-red-500">{emailError}</span>} */}
+            </div>
             
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="role">Role</Label>
                 <select 
                   id="role"
-                  className="rounded-lg flex h-10 w-full items-center justify-between rounded-md border border-input bg-input-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-lg flex h-10 w-full items-center justify-between rounded-md border border-input bg-input-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground 
+                            focus:outline-none focus:border-ring focus:ring-ring/50 focus-visible:ring-[1px] 
+                            disabled:cursor-not-allowed disabled:opacity-50"
                   value={formData.role}
                   onChange={e => setFormData({...formData, role: e.target.value as User['role']})}
                 >
-                  <option value="Admin">Admin</option>
-                  <option value="Analyst">Analyst</option>
-                  <option value="Viewer">Viewer</option>
+                  <option value="ADMIN">Admin</option>
+                  <option value="MANAGER">Manager</option>
+                  {/* <option value="Viewer">Viewer</option> */}
                 </select>
               </div>
               
@@ -377,12 +459,14 @@ export function Admin() {
                 <Label htmlFor="status">Status</Label>
                 <select 
                   id="status"
-                  className="rounded-lg flex h-10 w-full items-center justify-between rounded-md border border-input bg-input-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-lg flex h-10 w-full items-center justify-between rounded-md border border-input bg-input-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground 
+                            focus:outline-none focus:border-ring focus:ring-ring/50 focus-visible:ring-[1px] 
+                            disabled:cursor-not-allowed disabled:opacity-50"
                   value={formData.status}
                   onChange={e => setFormData({...formData, status: e.target.value as User['status']})}
                 >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
                 </select>
               </div>
             </div>

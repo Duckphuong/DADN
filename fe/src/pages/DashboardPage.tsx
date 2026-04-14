@@ -1,10 +1,5 @@
-import React, { JSX } from 'react';
-import {
-    BrowserRouter as Router,
-    Routes,
-    Route,
-    Navigate,
-} from 'react-router-dom';
+import { useState, useEffect} from 'react';
+import { sensorService } from '../services/api';
 import { Header } from '../components/Header';
 import { SensorCard } from '../components/SensorCard';
 import { WaterClassificationPanel } from '../components/WaterClassificationPanel';
@@ -14,51 +9,39 @@ import { MapVisualization } from '../components/MapVisualization';
 import { AlertsPanel } from '../components/AlertsPanel';
 import { SystemArchitecture } from '../components/SystemArchitecture';
 import { Footer } from '../components/Footer';
-import { LoginPage } from '../pages/LoginPage';
 import { Droplet, Thermometer, Zap, Eye, Wind, Waves } from 'lucide-react';
-import Predict from '../components/Predict';
-import PredictTable from '../components/PredictTable';
 
 // Main Page (Dashboard)
 export function Dashboard(){
-	const sensorData = {
-		pH: {
-			value: 7.2,
-			status: 'Neutral',
-			statusColor: 'text-green-600',
-			bgColor: 'bg-green-50',
-		},
-		temperature: {
-			value: 24.5,
-			status: 'Safe',
-			statusColor: 'text-green-600',
-			bgColor: 'bg-green-50',
-		},
-		conductivity: {
-			value: 450,
-			status: 'Medium salinity',
-			statusColor: 'text-yellow-600',
-			bgColor: 'bg-yellow-50',
-		},
-		turbidity: {
-			value: 3.2,
-			status: 'Slightly Cloudy',
-			statusColor: 'text-yellow-600',
-			bgColor: 'bg-yellow-50',
-		},
-		dissolvedOxygen: {
-			value: 7.8,
-			status: 'Good',
-			statusColor: 'text-green-600',
-			bgColor: 'bg-green-50',
-		},
-		hardness: {
-			value: 180,
-			status: 'Hard Water',
-			statusColor: 'text-blue-600',
-			bgColor: 'bg-blue-50',
-		},
+	const [sensorData, setSensorData] = useState<any>(null);
+	const [loading, setLoading] = useState(true);
+
+	const fetchLatestData = async () => {
+		try {
+			setLoading(true);
+			const response = await sensorService.getLatestData();
+			setSensorData(response); 
+		} catch (error) {
+			console.error("Lỗi khi lấy dữ liệu cảm biến:", error);
+		} finally {
+			setLoading(false);
+		}
 	};
+
+	useEffect(() => {
+		fetchLatestData();
+		// tự động cập nhật mỗi 30s
+		const interval = setInterval(fetchLatestData, 30000); 
+		return () => clearInterval(interval);
+	}, []);
+
+	if (loading && !sensorData) {
+		return <div className="p-6">Đang tải dữ liệu...</div>;
+	}
+
+	if (!sensorData) {
+		return <div className="p-6">Không có dữ liệu cảm biến.</div>;
+	}
 
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-cyan-50 via-blue-50 to-blue-100">
@@ -74,67 +57,119 @@ export function Dashboard(){
 							<SensorCard
 								icon={<Droplet className="w-8 h-8" />}
 								title="pH Value"
-								value={sensorData.pH.value.toFixed(1)}
+								value={sensorData.sensor_data.pH.toFixed(1)}
 								unit=""
 								range="0–14"
-								status={sensorData.pH.status}
-								statusColor={sensorData.pH.statusColor}
-								bgColor={sensorData.pH.bgColor}
+								status={
+									sensorData.sensor_data.pH >= 6.5 && sensorData.sensor_data.pH <= 8.5 ? "Neutral" : 
+									sensorData.sensor_data.pH < 6.5 ? "Acidic" : "Alkaline"
+								}
+								statusColor={
+										sensorData.sensor_data.pH >= 6.5 && sensorData.sensor_data.pH <= 8.5 ? "text-green-500" : "text-red-500"
+									}
+								bgColor={
+									sensorData.sensor_data.pH >= 6.5 && sensorData.sensor_data.pH <= 8.5 ? "bg-green-50" : "bg-red-50"
+								}
 								iconColor="text-blue-500"
 							/>
 							<SensorCard
 								icon={<Thermometer className="w-8 h-8" />}
 								title="Temperature"
-								value={sensorData.temperature.value.toFixed(1)}
+								value={sensorData.sensor_data.Temp.toFixed(1)}
 								unit="°C"
 								range="0–50"
-								status={sensorData.temperature.status}
-								statusColor={sensorData.temperature.statusColor}
-								bgColor={sensorData.temperature.bgColor}
+								status={
+									sensorData.sensor_data.Temp >= 25 && sensorData.sensor_data.Temp <= 30 ? "Optimal" : 
+									(sensorData.sensor_data.Temp >= 20 && sensorData.sensor_data.Temp < 25) || (sensorData.sensor_data.Temp > 30 && sensorData.sensor_data.Temp <= 32) ? "Suboptimal" : "Thermal Shock"
+								}
+								statusColor={
+									sensorData.sensor_data.Temp >= 25 && sensorData.sensor_data.Temp <= 30 ? "text-green-500" : 
+									(sensorData.sensor_data.Temp >= 20 && sensorData.sensor_data.Temp < 25) || (sensorData.sensor_data.Temp > 30 && sensorData.sensor_data.Temp <= 32) ? "text-yellow-500" : "text-red-500"
+								}
+								bgColor={
+									sensorData.sensor_data.Temp >= 25 && sensorData.sensor_data.Temp <= 30 ? "bg-green-50" : 
+									(sensorData.sensor_data.Temp >= 20 && sensorData.sensor_data.Temp < 25) || (sensorData.sensor_data.Temp > 30 && sensorData.sensor_data.Temp <= 32) ? "bg-yellow-50" : "bg-red-50"
+								}
 								iconColor="text-orange-500"
 							/>
 							<SensorCard
 								icon={<Zap className="w-8 h-8" />}
 								title="Conductivity"
-								value={sensorData.conductivity.value}
+								value={sensorData.conductivity?.value || "0"}
 								unit="µS/cm"
 								range="0–2000"
-								status={sensorData.conductivity.status}
-								statusColor={sensorData.conductivity.statusColor}
-								bgColor={sensorData.conductivity.bgColor}
+								status={
+									sensorData.sensor_data.Conductivity <= 1000 ? "Low Salinity" : 
+									sensorData.sensor_data.Conductivity <= 1500 ? "Moderate" : "High Mineral"
+								}
+								statusColor={
+									sensorData.sensor_data.Conductivity <= 1000 ? "text-green-500" : 
+									sensorData.sensor_data.Conductivity <= 1500 ? "text-yellow-500" : "text-red-500"
+								}
+								bgColor={
+									sensorData.sensor_data.Conductivity <= 1000 ? "bg-green-50" : 
+									sensorData.sensor_data.Conductivity <= 1500 ? "bg-yellow-50" : "bg-red-50"
+								}
 								iconColor="text-yellow-500"
 							/>
 							<SensorCard
 								icon={<Eye className="w-8 h-8" />}
 								title="Turbidity"
-								value={sensorData.turbidity.value.toFixed(1)}
+								value={sensorData.sensor_data.Turbidity.toFixed(1)}
 								unit="NTU"
 								range="0–10"
-								status={sensorData.turbidity.status}
-								statusColor={sensorData.turbidity.statusColor}
-								bgColor={sensorData.turbidity.bgColor}
+								status={
+									sensorData.sensor_data.Turbidity <= 5 ? "Clear" : 
+									sensorData.sensor_data.Turbidity <= 10 ? "Cloudy" : "Turbid"
+								}
+								statusColor={
+									sensorData.sensor_data.Turbidity <= 5 ? "text-green-500" : 
+									sensorData.sensor_data.Turbidity <= 10 ? "text-yellow-500" : "text-red-500"
+								}
+								bgColor={
+									sensorData.sensor_data.Turbidity <= 5 ? "bg-green-50" : 
+									sensorData.sensor_data.Turbidity <= 10 ? "bg-yellow-50" : "bg-red-50"
+								}
 								iconColor="text-gray-500"
 							/>
 							<SensorCard
 								icon={<Wind className="w-8 h-8" />}
-									title="Dissolved Oxygen"
-									value={sensorData.dissolvedOxygen.value.toFixed(1)}
-									unit="mg/L"
-									range="0–15"
-									status={sensorData.dissolvedOxygen.status}
-									statusColor={sensorData.dissolvedOxygen.statusColor}
-									bgColor={sensorData.dissolvedOxygen.bgColor}
-									iconColor="text-cyan-500"
+								title="Dissolved Oxygen"
+								value={sensorData.sensor_data.DO.toFixed(1)}
+								unit="mg/L"
+								range="0–15"
+								status={
+									sensorData.sensor_data.DO >= 5.0 ? "Oxygen Rich" : 
+									sensorData.sensor_data.DO >= 3.0 ? "Low Oxygen" : "Hypoxia (Danger)"
+								}
+								statusColor={
+									sensorData.sensor_data.DO >= 5.0 ? "text-green-500" : 
+									sensorData.sensor_data.DO >= 3.0 ? "text-yellow-500" : "text-red-500"
+								}
+								bgColor={
+									sensorData.sensor_data.DO >= 5.0 ? "bg-green-50" : 
+									sensorData.sensor_data.DO >= 3.0 ? "bg-yellow-50" : "bg-red-50"
+								}
+								iconColor="text-cyan-500"
 							/>
 							<SensorCard
 								icon={<Waves className="w-8 h-8" />}
 								title="Water Hardness"
-								value={sensorData.hardness.value}
+								value={sensorData.sensor_data.Hardness.toFixed(1)}
 								unit="mg L⁻¹"
 								range="0–1000"
-								status={`${sensorData.hardness.status} (Soft < 60)`}
-								statusColor={sensorData.hardness.statusColor}
-								bgColor={sensorData.hardness.bgColor}
+								status={
+									sensorData.sensor_data.Hardness >= 50 && sensorData.sensor_data.Hardness <= 150 ? "Soft Water" : 
+									sensorData.sensor_data.Hardness > 150 && sensorData.sensor_data.Hardness <= 300 ? "Hard Water" : "Very Hard"
+								}
+								statusColor={
+									sensorData.sensor_data.Hardness >= 50 && sensorData.sensor_data.Hardness <= 150 ? "text-green-500" : 
+									sensorData.sensor_data.Hardness > 150 && sensorData.sensor_data.Hardness <= 300 ? "text-yellow-500" : "text-red-500"
+								}
+								bgColor={
+									sensorData.sensor_data.Hardness >= 50 && sensorData.sensor_data.Hardness <= 150 ? "bg-green-50" : 
+									sensorData.sensor_data.Hardness > 150 && sensorData.sensor_data.Hardness <= 300 ? "bg-yellow-50" : "bg-red-50"
+								}
 								iconColor="text-indigo-500"
 							/>
 						</div>

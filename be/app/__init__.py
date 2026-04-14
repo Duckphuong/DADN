@@ -33,8 +33,13 @@ def create_app():
         password=app.config['PASSWORD'],
         alert_email_to=app.config['ALERT_EMAIL_TO']
     )
+    
+    def scheduled_task():
+        with app.app_context():
+            alert_service.check_and_send_alerts()
+
     scheduler = BackgroundScheduler()
-    scheduler.add_job(func=alert_service.check_and_send_alerts, trigger="interval", minutes=1)
+    scheduler.add_job(func=scheduled_task, trigger="interval", minutes=1)
     scheduler.start()
     @app.route("/")
     def home():

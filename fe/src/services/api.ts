@@ -80,25 +80,38 @@ export const userService = {
 /**
  * AI Prediction Services
  */
+// Lấy lịch sử 50 bản ghi dự đoán gần nhất
 export const getHistory = async (): Promise<HistoryData[]> => {
 	const res = await api.get('/prediction/history');
 	return res.data;
 };
 
+// Gửi dữ liệu cảm biến để dự đoán chất lượng nước và rủi ro
 export const predictWater = async (data: any) => {
 	const res = await api.post('/prediction/predict', data);
 	return res.data;
 };
 
+// Huấn luyện lại mô hình (từ file upload hoặc từ dữ liệu DB có sẵn)
 export const trainAIModel = async (file?: File) => {
-	const formData = new FormData();
-	if (file) {
-		formData.append('file', file);
-	}
-	const res = await api.post('/prediction/train', file ? formData : {}, {
-		headers: { 'Content-Type': 'multipart/form-data' }
-	});
-	return res.data;
+  if (file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await api.post('/prediction/train', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
+  } else {
+    // Nếu không có file, back-end sẽ tự gọi ai_service.train_model_from_db()
+    const res = await api.post('/prediction/train');
+    return res.data;
+  }
+};
+
+// Kiểm tra kết nối Database từ phía AI service
+export const testAIDatabase = async () => {
+  const res = await api.get('/prediction/test-db');
+  return res.data;
 };
 
 /**

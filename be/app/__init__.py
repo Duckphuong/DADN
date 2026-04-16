@@ -1,6 +1,7 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
 from apscheduler.schedulers.background import BackgroundScheduler
+from app.services.sensor_health_service import SensorHealthService
 
 from app.bootstrap.container import CONTAINER_EXTENSION_KEY, build_container
 from app.config import Config
@@ -23,7 +24,6 @@ def create_app():
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(sensor_station_bp)
-    app.register_blueprint(sensor_data_bp)
     app.register_blueprint(prediction_bp)
     app.register_blueprint(alert_bp)
     
@@ -43,6 +43,15 @@ def create_app():
     scheduler = BackgroundScheduler()
     scheduler.add_job(func=scheduled_task, trigger="interval", minutes=1)
     scheduler.start()
+
+    sensor_health = SensorHealthService()
+    scheduler.add_job(
+        func=sensor_health.mark_offline_sensors,
+        trigger="interval",
+        minutes=10,
+        id="sensor_health_check",
+    )
+
     @app.route("/")
     def home():
         return {

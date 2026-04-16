@@ -6,10 +6,12 @@ from datetime import datetime
 from app.infrastructure.persistence.mongo.connection import get_mongo_database
 from app.services.ai_model_service import AIModelService
 from app.domain.prediction import PredictModule
+from app.services.sensor_health_service import SensorHealthService
 
 prediction_bp = Blueprint('prediction', __name__, url_prefix="/prediction")
 
 ai_service = AIModelService()
+sensor_health = SensorHealthService()
 
 @prediction_bp.route('/test-db', methods=['GET'])
 def test_db():
@@ -30,8 +32,17 @@ def train_model():
 @prediction_bp.route('/predict', methods=['POST'])
 def predict():
     data = request.get_json()
-    if not data:
-        return jsonify({"error": "No data provided"}), 400
+
+    sensor_id = data.get("sensorId") or data.get("idSensor")
+
+    if sensor_id:
+        status = sensor_health.check_and_update(sensor_id, data)
+
+        if status == "ERROR":
+            return jsonify({
+                "error": "Invalid sensor data (all values = 0)"
+            }), 400
+
     result = ai_service.predict(data)
 
     try:

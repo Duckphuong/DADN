@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.infrastructure.persistence.mongo.connection import get_mongo_database
 
@@ -19,14 +19,27 @@ def get_alerts():
         cursor = coll.find(query).sort("created_at", -1).limit(50)
         alerts = []
         for d in cursor:
+            raw_date = d.get("created_at")
+            # 1. Xử lý hiển thị thời gian (Time Ago)
+            # Hàm calculate_time_ago của bạn sẽ nhận raw_date (dù là str hay datetime)
+            time_ago_str = calculate_time_ago(raw_date) if raw_date else "N/A"
+
+            # 2. Xử lý định dạng ISO để trả về API
+            if isinstance(raw_date, datetime):
+                iso_date = raw_date.isoformat()
+            elif isinstance(raw_date, str):
+                iso_date = raw_date  # Nếu đã là string thì giữ nguyên
+            else:
+                iso_date = None
+
             item = {
                 "id": str(d["_id"]),
                 "wqi_score": d.get("wqi_score"),
                 "contamination_risk": d.get("contamination_risk"),
                 "message": d.get("message"),
                 "status": d.get("status"),
-                "time_ago": calculate_time_ago(d.get("created_at")) if d.get("created_at") else "N/A",
-                "created_at": d.get("created_at").isoformat() if d.get("created_at") else None,
+                "time_ago": time_ago_str,
+                "created_at": iso_date,
             }
             # Determine level
             wqi = d.get("wqi_score", 100)
@@ -60,7 +73,22 @@ def mark_read(alert_id):
 
 
 def calculate_time_ago(dt):
-    diff = datetime.utcnow() - dt
+    if isinstance(dt, str):
+        try:
+            from dateutil import parser
+            dt = parser.parse(dt)
+        except ImportError:
+            # Nếu không có dateutil, dùng hàm có sẵn của Python cho chuẩn ISO
+            dt = datetime.fromisoformat(dt.replace('Z', '+00:00'))
+
+    # Đảm bảo dt cũng là "timezone-aware" để có thể trừ cho nhau
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+
+    # Dùng cách mới để lấy giờ UTC (hết bị gạch ngang)
+    now = datetime.now(timezone.utc)
+    
+    diff = now - dt
     if diff.days > 0:
         return f"{diff.days} day(s) ago"
     seconds = diff.seconds

@@ -3,7 +3,7 @@ import { Cpu, Cloud, Database, Brain, Smartphone, Bell, Droplet, Thermometer, Za
 export function SystemArchitecture() {
   return (
     <section>
-      <h2 className="text-cyan-900 mb-6">System Architecture</h2>
+      <h2 className="text-cyan-900 mb-6 font-medium text-xl">System Architecture</h2>
       
       <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100 overflow-x-auto">
         {/* <div className="flex flex-col md:flex-row items-center justify-between gap-4 md:min-w-[800px] md:flex-nowrap"> */}

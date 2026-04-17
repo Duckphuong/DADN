@@ -1,6 +1,7 @@
 from datetime import datetime, timezone, timedelta
- 
+import threading
 from pymongo.errors import PyMongoError
+from flask import current_app
  
 from app.infrastructure.persistence.mongo.connection import get_mongo_database
 from app.infrastructure.persistence.mongo.object_id import parse_object_id
@@ -17,6 +18,7 @@ SENSOR_FIELDS = [
 STATUS_ONLINE = "ONLINE"
 STATUS_OFFLINE = "OFFLINE"
 STATUS_ERROR = "ERROR"
+ALERT_SERVICE = 'alert_service'
  
  
 class SensorHealthService:
@@ -31,6 +33,13 @@ class SensorHealthService:
         Không raise exception — lỗi chỉ được log, không làm crash API predict.
         """
         status = self._detect_status(data)
+        if status == STATUS_ERROR:
+            alert_service = current_app.extensions.get(ALERT_SERVICE)
+            if alert_service:
+                threading.Thread(
+                    target=alert_service.send_sensor_error_alert, 
+                    args=(str(sensor_id), status)
+                ).start()
         self._update_sensor_status(sensor_id, status)
         return status
  
@@ -87,16 +96,28 @@ class SensorHealthService:
             return
  
         threshold = datetime.now(timezone.utc) - timedelta(minutes=OFFLINE_THRESHOLD_MINUTES)
+        
+        offline_query = {
+            "isDeleted": False,
+            "status": {"$ne": STATUS_ERROR},
+            "$or": [
+                {"last_seen": {"$exists": False}},
+                {"last_seen": {"$lt": threshold}},
+            ],
+        }
+
         try:
+            alert_service = current_app.extensions.get(ALERT_SERVICE)
+            for sensor in db["sensor_informations"].find(offline_query, {"_id": 1}):
+                sensor_id_str = str(sensor["_id"])
+                if alert_service:
+                    threading.Thread(
+                        target=alert_service.send_sensor_error_alert, 
+                        args=(sensor_id_str, "OFFLINE")
+                    ).start()
+
             result = db["sensor_informations"].update_many(
-                {
-                    "isDeleted": False,
-                    "status": {"$ne": STATUS_ERROR},   # không ghi đè sensor đang ERROR
-                    "$or": [
-                        {"last_seen": {"$exists": False}},          # chưa từng gửi data
-                        {"last_seen": {"$lt": threshold}},           # quá threshold
-                    ],
-                },
+                offline_query,
                 {
                     "$set": {
                         "status": STATUS_OFFLINE,

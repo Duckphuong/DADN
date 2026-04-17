@@ -9,13 +9,14 @@ from app.infrastructure.persistence.mongo.connection import get_mongo_database
 
 
 class AlertService:
-    def __init__(self, smtp_server, smtp_port, email, password, alert_email_to):
+    def __init__(self, smtp_server, smtp_port, email, password):
         self.smtp_server = smtp_server
         self.smtp_port = smtp_port
         self.email = email
         self.password = password
-        self.alert_email_to = alert_email_to
         self.last_email_time = None  
+        self.last_sensor_error_time = {}  # Lưu thời gian gửi mail lỗi cuối cùng của từng sensor
+
 
     def check_and_send_alerts(self):
         """Check predict_module for unprocessed alerts and send emails if needed."""
@@ -30,7 +31,7 @@ class AlertService:
         cursor = coll.find({"is_email_processed": False})
         for doc in cursor:
             if self._should_send_alert(doc):
-                target_email = self.alert_email_to 
+                target_email = None
                 sensor = None
                 try:
                     sensor_id = doc.get("id_sensor") or doc.get("input_sensor_id")
@@ -257,6 +258,12 @@ class AlertService:
         """
         return html_body
 
+
+
+
+    """
+    SENSOR ERROR ALERT
+    """
     def send_sensor_error_alert(self, sensor_id: str, error_type: str = "ERROR") -> bool:
         """
         Send an alert email when a sensor error (all data is 0) or disconnection (offline) is detected.
@@ -272,12 +279,19 @@ class AlertService:
         if db is None:
             print("MongoDB not connected. Cannot send sensor error email.")
             return False
+            
+        # Avoid spam mail, send only 1 email per sensor per error type within 2 hours
+        cache_key = f"{str(sensor_id)}_{error_type}"
+        now = datetime.utcnow()
+        last_sent = self.last_sensor_error_time.get(cache_key)
+        if last_sent and (now - last_sent) < timedelta(hours=2):
+            return False
 
         try:
             s_id = ObjectId(sensor_id) if isinstance(sensor_id, str) and len(sensor_id) == 24 else sensor_id
             sensor = db.get_collection("sensor_informations").find_one({"_id": s_id})
             
-            target_email = self.alert_email_to
+            target_email = None
             if sensor and "userId" in sensor:
                 owner_id = sensor.get("userId")
                 o_id = ObjectId(owner_id) if isinstance(owner_id, str) and len(owner_id) == 24 else owner_id
@@ -309,6 +323,9 @@ class AlertService:
             text = msg.as_string()
             server.sendmail(self.email, target_email, text)
             server.quit()
+            
+            # Update last sent time for this sensor and error type
+            self.last_sensor_error_time[cache_key] = now
             print(f"Sent {error_type} alert email for sensor to {target_email}", flush=True)
             return True
 

@@ -32,9 +32,10 @@ def create_app():
         smtp_server=app.config['SMTP_SERVER'],
         smtp_port=app.config['SMTP_PORT'],
         email=app.config['EMAIL'],
-        password=app.config['PASSWORD'],
-        alert_email_to=app.config['ALERT_EMAIL_TO']
+        password=app.config['PASSWORD']
     )
+    
+    app.extensions['alert_service'] = alert_service
     
     def scheduled_task():
         with app.app_context():

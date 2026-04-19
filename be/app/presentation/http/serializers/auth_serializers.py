@@ -15,6 +15,7 @@ def serialize_user(user: User) -> dict:
         "updatedAt": serialize_utc_datetime(user.updated_at),
     }
     if user.id is not None:
+        payload["id"] = user.id
         payload["_id"] = user.id
     return payload
 
@@ -36,3 +37,15 @@ def serialize_login_response(result: LoginUserResult) -> dict:
 
 def serialize_logout_response(message: str) -> dict:
     return {"message": message}
+
+
+def serialize_current_user_response(user: User) -> dict:
+    return serialize_user(user)
+
+
+def serialize_user_list_response(users: list[User]) -> list[dict]:
+    return [serialize_user(user) for user in users]
+
+
+def serialize_user_response(user: User) -> dict:
+    return serialize_user(user)

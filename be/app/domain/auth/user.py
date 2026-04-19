@@ -6,9 +6,14 @@ from app.domain.shared.time import utc_now
 
 
 USER_ROLE_MANAGER = "MANAGER"
+USER_ROLE_ADMIN = "ADMIN"
+USER_ROLE_USER = "USER"
 USER_STATUS_ACTIVE = "ACTIVE"
+USER_STATUS_INACTIVE = "INACTIVE"
 DEFAULT_USER_ROLE = USER_ROLE_MANAGER
 DEFAULT_USER_STATUS = USER_STATUS_ACTIVE
+ALLOWED_USER_ROLES = {USER_ROLE_ADMIN, USER_ROLE_MANAGER, USER_ROLE_USER}
+ALLOWED_USER_STATUSES = {USER_STATUS_ACTIVE, USER_STATUS_INACTIVE}
 
 
 @dataclass(slots=True)
@@ -52,6 +57,32 @@ class User:
     def is_active(self) -> bool:
         return self.status == USER_STATUS_ACTIVE
 
+    def update(
+        self,
+        *,
+        full_name: str | None = None,
+        phone_number: str | None = None,
+        url_avatar: str | None = None,
+        role: str | None = None,
+        status: str | None = None,
+    ) -> None:
+        if full_name is not None:
+            self.full_name = self._normalize_full_name(full_name)
+        if phone_number is not None:
+            self.phone_number = phone_number.strip()
+        if url_avatar is not None:
+            self.url_avatar = url_avatar.strip()
+        if role is not None:
+            self.role = self.normalize_role(role)
+        if status is not None:
+            self.status = self.normalize_status(status)
+
+        self.updated_at = utc_now()
+
+    def soft_delete(self) -> None:
+        self.status = USER_STATUS_INACTIVE
+        self.updated_at = utc_now()
+
     @staticmethod
     def normalize_email(email: str) -> str:
         normalized_email = (email or "").strip().lower()
@@ -62,9 +93,16 @@ class User:
     @staticmethod
     def normalize_role(role: str | None) -> str:
         normalized_role = (role or DEFAULT_USER_ROLE).strip().upper()
-        if not normalized_role:
-            raise DomainValidationError("role is required")
+        if normalized_role not in ALLOWED_USER_ROLES:
+            raise DomainValidationError("role must be ADMIN, MANAGER, or USER")
         return normalized_role
+
+    @staticmethod
+    def normalize_status(status: str | None) -> str:
+        normalized_status = (status or DEFAULT_USER_STATUS).strip().upper()
+        if normalized_status not in ALLOWED_USER_STATUSES:
+            raise DomainValidationError("status must be ACTIVE or INACTIVE")
+        return normalized_status
 
     @staticmethod
     def _normalize_full_name(full_name: str) -> str:

@@ -5,9 +5,11 @@
 ## Tính năng (Features)
 
 - Đăng ký, đăng nhập, đăng xuất bằng **JWT**.
+- Quản lý người dùng cho **Admin**.
 - Lưu trữ người dùng (User) và trạm cảm biến (Sensor Station) trong **MongoDB**.
 - Chỉ chủ sở hữu (**Owner**) mới được quyền đọc, sửa, xóa dữ liệu của mình.
 - Xóa mềm (**Soft delete**) cho bộ sưu tập `sensor_informations`.
+- Xóa mềm người dùng bằng cách chuyển `status` sang `INACTIVE`.
 - Thời gian (Datetime) được chuẩn hóa theo múi giờ **UTC**.
 - Phản hồi lỗi (Error response) được chuẩn hóa theo một định dạng duy nhất.
 
@@ -139,8 +141,16 @@ python run.py
 - `POST /auth/register`: Đăng ký tài khoản.
 - `POST /auth/login`: Đăng nhập lấy JWT.
 - `POST /auth/logout`: Đăng xuất (Stateless).
+- `GET /auth/me`: Lấy thông tin người dùng hiện tại.
 
-### 2. Trạm cảm biến (Cần Authorization Header)
+### 2. Quản lý người dùng (Cần role `ADMIN`)
+
+- `GET /auth/users`: Lấy danh sách toàn bộ người dùng.
+- `GET /auth/users/<id>`: Xem chi tiết người dùng.
+- `PATCH /auth/users/<id>`: Cập nhật `fullName`, `phoneNumber`, `urlAvatar`, `role`, `status`.
+- `DELETE /auth/users/<id>`: Xóa mềm người dùng bằng cách chuyển `status` sang `INACTIVE`.
+
+### 3. Trạm cảm biến (Cần Authorization Header)
 
 - `POST /api/sensors`: Tạo trạm mới.
 - `GET /api/sensors`: Lấy danh sách (Phân trang: `page`, `limit`).

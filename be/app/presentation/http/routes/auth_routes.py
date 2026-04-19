@@ -1,17 +1,23 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, g, jsonify, request
 
-from app.application.common.exceptions import ApplicationError
+from app.application.common.exceptions import ApplicationError, ForbiddenError
+from app.domain.auth.user import USER_ROLE_ADMIN
 from app.presentation.http.dependencies import get_container
 from app.presentation.http.errors import map_application_error
 from app.presentation.http.middleware.auth_middleware import jwt_required
 from app.presentation.http.serializers.auth_serializers import (
+    serialize_current_user_response,
     serialize_login_response,
     serialize_logout_response,
     serialize_register_response,
+    serialize_user_list_response,
+    serialize_user_response,
 )
 from app.presentation.http.validators.auth_validators import (
     validate_login_request,
     validate_register_request,
+    validate_update_user_request,
+    validate_user_id,
 )
 
 
@@ -49,3 +55,66 @@ def logout():
     except ApplicationError as exc:
         payload, status_code = map_application_error(exc)
         return jsonify(payload), status_code
+
+
+@auth_bp.get("/me")
+@jwt_required
+def get_current_user():
+    return jsonify(serialize_current_user_response(g.current_user)), 200
+
+
+@auth_bp.get("/users")
+@jwt_required
+def list_users():
+    try:
+        _require_admin()
+        users = get_container().list_users_use_case.execute()
+        return jsonify(serialize_user_list_response(users)), 200
+    except ApplicationError as exc:
+        payload, status_code = map_application_error(exc)
+        return jsonify(payload), status_code
+
+
+@auth_bp.get("/users/<user_id>")
+@jwt_required
+def get_user(user_id):
+    try:
+        _require_admin()
+        user = get_container().get_user_use_case.execute(validate_user_id(user_id))
+        return jsonify(serialize_user_response(user)), 200
+    except ApplicationError as exc:
+        payload, status_code = map_application_error(exc)
+        return jsonify(payload), status_code
+
+
+@auth_bp.patch("/users/<user_id>")
+@jwt_required
+def update_user(user_id):
+    try:
+        _require_admin()
+        command = validate_update_user_request(
+            request.get_json(silent=True) or {},
+            user_id=user_id,
+        )
+        user = get_container().update_user_use_case.execute(command)
+        return jsonify(serialize_user_response(user)), 200
+    except ApplicationError as exc:
+        payload, status_code = map_application_error(exc)
+        return jsonify(payload), status_code
+
+
+@auth_bp.delete("/users/<user_id>")
+@jwt_required
+def delete_user(user_id):
+    try:
+        _require_admin()
+        user = get_container().delete_user_use_case.execute(validate_user_id(user_id))
+        return jsonify(serialize_user_response(user)), 200
+    except ApplicationError as exc:
+        payload, status_code = map_application_error(exc)
+        return jsonify(payload), status_code
+
+
+def _require_admin() -> None:
+    if g.current_user.role != USER_ROLE_ADMIN:
+        raise ForbiddenError("Admin role is required")

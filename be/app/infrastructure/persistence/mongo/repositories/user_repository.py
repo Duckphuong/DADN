@@ -1,5 +1,6 @@
 from collections.abc import Callable
 
+from pymongo import DESCENDING
 from pymongo.database import Database
 from pymongo.errors import DuplicateKeyError, PyMongoError
 
@@ -57,29 +58,66 @@ class MongoUserRepository(UserRepository):
 
         return collection
 
-# Add
     def get_all(self) -> list[User]:
         collection = self._get_collection()
         try:
-            cursor = collection.find()
-            return [UserDocumentMapper.to_entity(doc) for doc in cursor]
+            cursor = collection.find().sort("createdAt", DESCENDING)
+            return [
+                user
+                for user in (UserDocumentMapper.to_entity(document) for document in cursor)
+                if user is not None
+            ]
         except PyMongoError as exc:
             raise InfrastructureError("Failed to fetch users") from exc
 
     def update(self, user: User) -> User:
         collection = self._get_collection()
-        object_id = parse_object_id(user.id)
+        if user.id is None:
+            raise InfrastructureError("User id is required for update")
+
+        object_id = parse_object_id(user.id, field_name="user id")
         try:
-            collection.replace_one({"_id": object_id}, UserDocumentMapper.to_document(user))
-            return user
+            collection.update_one(
+                {"_id": object_id},
+                {
+                    "$set": {
+                        "fullName": user.full_name,
+                        "urlAvatar": user.url_avatar,
+                        "role": user.role,
+                        "phoneNumber": user.phone_number,
+                        "status": user.status,
+                        "updatedAt": user.updated_at,
+                    }
+                },
+            )
+            updated_document = collection.find_one({"_id": object_id})
+            updated_user = UserDocumentMapper.to_entity(updated_document)
+            if updated_user is None:
+                raise InfrastructureError("Failed to fetch updated user")
+            return updated_user
         except PyMongoError as exc:
             raise InfrastructureError("Failed to update user") from exc
 
-    def delete(self, user_id: str) -> bool:
+    def soft_delete(self, user: User) -> User:
         collection = self._get_collection()
-        object_id = parse_object_id(user_id)
+        if user.id is None:
+            raise InfrastructureError("User id is required for delete")
+
+        object_id = parse_object_id(user.id, field_name="user id")
         try:
-            result = collection.delete_one({"_id": object_id})
-            return result.deleted_count > 0
+            collection.update_one(
+                {"_id": object_id},
+                {
+                    "$set": {
+                        "status": user.status,
+                        "updatedAt": user.updated_at,
+                    }
+                },
+            )
+            deleted_document = collection.find_one({"_id": object_id})
+            deleted_user = UserDocumentMapper.to_entity(deleted_document)
+            if deleted_user is None:
+                raise InfrastructureError("Failed to fetch deleted user")
+            return deleted_user
         except PyMongoError as exc:
             raise InfrastructureError("Failed to delete user") from exc

@@ -1,15 +1,21 @@
 from app.domain.auth.user import (
     DEFAULT_USER_ROLE,
     DEFAULT_USER_STATUS,
+    USER_ROLE_ADMIN,
     USER_ROLE_MANAGER,
+    USER_ROLE_USER,
     USER_STATUS_ACTIVE,
+    USER_STATUS_INACTIVE,
     User,
 )
 
 __all__ = [
     "DEFAULT_USER_ROLE",
     "DEFAULT_USER_STATUS",
+    "USER_ROLE_ADMIN",
     "USER_ROLE_MANAGER",
+    "USER_ROLE_USER",
     "USER_STATUS_ACTIVE",
+    "USER_STATUS_INACTIVE",
     "User",
 ]

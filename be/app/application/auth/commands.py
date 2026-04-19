@@ -23,3 +23,13 @@ class LoginUserCommand:
 class LoginUserResult:
     access_token: str
     user: User
+
+
+@dataclass(slots=True)
+class UpdateUserCommand:
+    user_id: str
+    full_name: str | None = None
+    phone_number: str | None = None
+    url_avatar: str | None = None
+    role: str | None = None
+    status: str | None = None

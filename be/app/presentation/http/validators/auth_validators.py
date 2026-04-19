@@ -1,4 +1,8 @@
-from app.application.auth.commands import LoginUserCommand, RegisterUserCommand
+from app.application.auth.commands import (
+    LoginUserCommand,
+    RegisterUserCommand,
+    UpdateUserCommand,
+)
 from app.application.common.exceptions import ValidationError
 
 
@@ -33,3 +37,49 @@ def validate_login_request(payload: dict) -> LoginUserCommand:
         raise ValidationError("email and password are required")
 
     return LoginUserCommand(email=email, password=password)
+
+
+def validate_update_user_request(payload: dict, *, user_id: str) -> UpdateUserCommand:
+    if not isinstance(payload, dict):
+        raise ValidationError("Invalid JSON payload")
+
+    forbidden_fields = {"_id", "id", "email", "password", "passwordHash", "createdAt"}
+    provided_forbidden_fields = sorted(forbidden_fields.intersection(payload.keys()))
+    if provided_forbidden_fields:
+        raise ValidationError(
+            f"{', '.join(provided_forbidden_fields)} cannot be updated here"
+        )
+
+    role = _get_optional_string(payload, "role")
+    status = _get_optional_string(payload, "status")
+    if role == "":
+        raise ValidationError("role must be ADMIN, MANAGER, or USER")
+    if status == "":
+        raise ValidationError("status must be ACTIVE or INACTIVE")
+
+    return UpdateUserCommand(
+        user_id=validate_user_id(user_id),
+        full_name=_get_optional_string(payload, "fullName"),
+        phone_number=_get_optional_string(payload, "phoneNumber"),
+        url_avatar=_get_optional_string(payload, "urlAvatar"),
+        role=role,
+        status=status,
+    )
+
+
+def validate_user_id(user_id: str) -> str:
+    normalized_user_id = (user_id or "").strip()
+    if not normalized_user_id:
+        raise ValidationError("user id is required")
+    return normalized_user_id
+
+
+def _get_optional_string(payload: dict, field_name: str) -> str | None:
+    if field_name not in payload:
+        return None
+
+    value = payload.get(field_name)
+    if not isinstance(value, str):
+        raise ValidationError(f"{field_name} must be a string")
+
+    return value.strip()

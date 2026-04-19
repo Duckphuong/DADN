@@ -23,7 +23,7 @@ dist-ssr/
 *.njsproj
 *.sln
 *.sw?
-
+.codex
 # Các file chứa biến môi trường (Thông tin bảo mật)
 .env
 .env.local

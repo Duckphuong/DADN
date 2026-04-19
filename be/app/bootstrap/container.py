@@ -3,9 +3,13 @@ from app.application.sensor_station.sensor_data_use_cases import GetLatestSensor
 from app.infrastructure.persistence.mongo.repositories.sensor_data_repository import MongoSensorDataRepository
 from app.application.auth.use_cases import (
     AuthenticateUserUseCase,
+    DeleteUserUseCase,
+    GetUserUseCase,
+    ListUsersUseCase,
     LoginUserUseCase,
     LogoutUserUseCase,
     RegisterUserUseCase,
+    UpdateUserUseCase,
 )
 from app.application.sensor_station.use_cases import (
     CreateSensorStationUseCase,
@@ -34,6 +38,10 @@ class ApplicationContainer:
     login_user_use_case: LoginUserUseCase
     logout_user_use_case: LogoutUserUseCase
     authenticate_user_use_case: AuthenticateUserUseCase
+    list_users_use_case: ListUsersUseCase
+    get_user_use_case: GetUserUseCase
+    update_user_use_case: UpdateUserUseCase
+    delete_user_use_case: DeleteUserUseCase
     create_sensor_station_use_case: CreateSensorStationUseCase
     list_sensor_stations_use_case: ListSensorStationsUseCase
     get_sensor_station_use_case: GetSensorStationUseCase
@@ -66,6 +74,10 @@ def build_container(config) -> ApplicationContainer:
             token_service,
             user_repository,
         ),
+        list_users_use_case=ListUsersUseCase(user_repository),
+        get_user_use_case=GetUserUseCase(user_repository),
+        update_user_use_case=UpdateUserUseCase(user_repository),
+        delete_user_use_case=DeleteUserUseCase(user_repository),
         create_sensor_station_use_case=CreateSensorStationUseCase(
             sensor_station_repository
         ),

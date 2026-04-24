@@ -9,6 +9,7 @@
 #include <SPIFFS.h>
 #include <FS.h>
 #include <vector>
+#include <math.h>
 
 // ============================================
 // CONFIGURATION MANAGEMENT
@@ -103,16 +104,183 @@ File dataQueueFile;
 String device_id;
 
 struct SensorReadings {
+  // Real sensor
   float temperature;
-  unsigned long timestamp;        // Unix epoch timestamp
+  unsigned long timestamp;
+  
+  // Simulated parameters (cached)
+  float turbidity;
+  float dissolvedOxygen;
+  float ph;
+  float ammonia;
+  float h2s;
+  float bod;
+  float co2;
+  float alkalinity;
+  float hardness;
+  float calcium;
+  float nitrite;
+  float phosphorus;
+  float plankton;
 };
 SensorReadings currentReadings;
+
+// ============================================
+// ECOSYSTEM SIMULATION (Replaces 13 simulated sensors)
+// ============================================
+
+// Simulate water quality ecosystem based on real temperature reading
+// Models: nutrient cycling, plankton growth, DO balance, pH buffering, etc.
+void simulateWaterQualityEcosystem() {
+  float temp = currentReadings.temperature;
+  
+  // Temperature factor for biochemical reaction rates (Q10 ≈ 2.0)
+  // At 25°C, factor = 1.0; reactions double per 10°C increase
+  float tempRate = pow(2.0, (temp - 25.0) / 10.0);
+  tempRate = max(0.1f, min(5.0f, tempRate));  // clamp to avoid extremes
+  
+  // ---------------------------------------------------------
+  // 1. BASE NUTRIENTS & MINERALS (Input sources)
+  // ---------------------------------------------------------
+  // Phosphorus: from runoff/debris, slowly varying
+  currentReadings.phosphorus = constrain(
+    0.5 + random(-50, 50) / 100.0 + (temp - 20) * 0.008,
+    0.0, 10.0
+  );
+  
+  // Ammonia: from waste/decomposition, influenced by temperature
+  currentReadings.ammonia = constrain(
+    1.0 + random(-30, 30) / 100.0 + (temp - 20) * 0.015 * tempRate,
+    0.0, 5.0
+  );
+  
+  // Alkalinity: buffering capacity (relatively stable)
+  currentReadings.alkalinity = constrain(
+    120.0 + random(-10, 10) + (temp - 20) * 0.5,
+    50.0, 300.0
+  );
+  
+  // ---------------------------------------------------------
+  // 2. NITROGEN CYCLE (Ammonia -> Nitrite)
+  // ---------------------------------------------------------
+  // Nitrification: NH3 -> NO2 (bacterial, temperature dependent)
+  float nitrificationRate = 0.3 * tempRate;  // 30% conversion at 25°C
+  currentReadings.nitrite = constrain(
+    currentReadings.ammonia * nitrificationRate,
+    0.0, 5.0
+  );
+  
+  // ---------------------------------------------------------
+  // 3. PRIMARY PRODUCTION (Plankton/Algae)
+  // ---------------------------------------------------------
+  // Algae growth depends on nutrients (P, N) and temperature
+  float nutrientFactor = (currentReadings.phosphorus / 2.0) + (currentReadings.ammonia / 5.0);
+  nutrientFactor = constrain(nutrientFactor, 0.0, 3.0);
+  
+  // Temperature optimum: algae prefer 20-30°C
+  float tempGrowthFactor = 1.0 - fabs(temp - 25.0) / 30.0;
+  tempGrowthFactor = max(0.1f, tempGrowthFactor);
+  
+  // Combined plankton biomass
+  currentReadings.plankton = constrain(
+    (nutrientFactor * 200.0 + (temp - 20.0) * 15.0) * tempGrowthFactor + random(-50, 50),
+    10.0, 1000.0
+  );
+  
+  // ---------------------------------------------------------
+  // 4. TURBIDITY & BOD (Consequences of plankton)
+  // ---------------------------------------------------------
+  // Turbidity primarily from suspended algae + organic particles
+  currentReadings.turbidity = constrain(
+    2.0 + (currentReadings.plankton * 0.08) + random(-5, 5),
+    0.0, 100.0
+  );
+  
+  // BOD: organic matter decomposition (plankton death + waste)
+  // Accelerates with temperature (faster metabolism)
+  float decayRate = 0.03 * tempRate;
+  currentReadings.bod = constrain(
+    (currentReadings.plankton * 0.04 + currentReadings.ammonia * 2.0) * (1.0 + decayRate) + random(-2, 2),
+    0.0, 50.0
+  );
+  
+  // ---------------------------------------------------------
+  // 5. DISSOLVED OXYGEN (DO) BALANCE
+  // ---------------------------------------------------------
+  float t = temp;
+  float t2 = t * t;
+  float t3 = t2 * t;
+  
+  // Saturation concentration (Benson-Krause approximate, mg/L)
+  float do_sat = 14.652 - (0.41022 * t) + (0.007991 * t2) - (0.000077774 * t3);
+  
+  // DO consumption: BOD decomposition uses oxygen (respiration)
+  float do_consumed = currentReadings.bod * 0.4;
+  
+  // DO production: photosynthesis by plankton (light-limited not modeled)
+  float do_produced = currentReadings.plankton * 0.0015;
+  
+  currentReadings.dissolvedOxygen = constrain(
+    do_sat - do_consumed + do_produced + random(-20, 20) / 10.0,
+    0.0, 14.0
+  );
+  
+  // ---------------------------------------------------------
+  // 6. CO2 & pH (Inverse relationship with buffering)
+  // ---------------------------------------------------------
+  // CO2 sources: respiration + decomposition (proportional to BOD)
+  // CO2 sinks: photosynthesis by plankton
+  currentReadings.co2 = constrain(
+    3.0 + (currentReadings.bod * 0.6) - (currentReadings.plankton * 0.001) + random(-2, 2),
+    0.0, 100.0
+  );
+  
+  // pH: Balance between alkaline buffer (alkalinity) and carbonic acid (CO2)
+  // Alkalinity raises pH, CO2 lowers pH (forms H2CO3)
+  float alkalinityEffect = (currentReadings.alkalinity - 100.0) * 0.004;
+  float co2Effect = (currentReadings.co2 - 10.0) * 0.08;
+  float basePh = 7.0 + alkalinityEffect - co2Effect;
+  
+  currentReadings.ph = constrain(
+    basePh + random(-10, 10) / 10.0,
+    4.0, 10.0
+  );
+  
+  // ---------------------------------------------------------
+  // 7. DERIVED MINERALS
+  // ---------------------------------------------------------
+  // Hardness correlates with alkalinity (carbonate hardness)
+  currentReadings.hardness = constrain(
+    currentReadings.alkalinity * 1.2 + random(-20, 20),
+    50.0, 500.0
+  );
+  
+  // Calcium is major component of hardness (~40%)
+  currentReadings.calcium = constrain(
+    currentReadings.hardness * 0.4 + random(-10, 10),
+    20.0, 200.0
+  );
+  
+  // H2S: hydrogen sulfide produced in anoxic conditions (very low DO)
+  // Threshold: DO < 2 mg/L promotes anaerobic bacteria
+  if (currentReadings.dissolvedOxygen < 2.0) {
+    currentReadings.h2s = constrain(
+      currentReadings.bod * 0.02 + random(-0.1, 0.1),
+      0.0, 2.0
+    );
+  } else {
+    currentReadings.h2s = constrain(
+      currentReadings.bod * 0.005 + random(-0.05, 0.05),
+      0.0, 1.0
+    );
+  }
+}
 
 // ============================================
 // SENSOR READING
 // ============================================
 
-// Read the real temperature sensor and cache value
+// Read physical sensors and simulate full water quality ecosystem
 void readPhysicalSensors() {
   // Sync time if WiFi connected and NTP initialized
   if (WiFi.status() == WL_CONNECTED && ntpInitialized) {
@@ -128,122 +296,82 @@ void readPhysicalSensors() {
     currentReadings.timestamp = millis() / 1000;
   }
   
-  // Only read the real temperature sensor (DS18B20)
+  // Read real temperature sensor (DS18B20)
   sensors.requestTemperatures();
   float temp = sensors.getTempCByIndex(0);
   
-  // Check for DS18B20 connection error
   if (temp == DEVICE_DISCONNECTED_C) {
     DEBUG_PRINTLN("Error: DS18B20 sensor disconnected!");
-    currentReadings.temperature = 25.0;  // Default fallback value
+    currentReadings.temperature = 25.0;  // Default fallback
   } else {
     currentReadings.temperature = temp;
   }
+  
+  // Simulate ecosystem based on temperature
+  simulateWaterQualityEcosystem();
 }
 
 
 // ============================================
-// REAL SENSOR FUNCTION
+// SENSOR ACCESS FUNCTIONS
 // ============================================
 
+// Real sensor
 float getTemperature() {
   return currentReadings.temperature;
 }
 
-// ============================================
-// SIMULATED SENSOR FUNCTIONS (13 software-generated values)
-// ============================================
-
-// All sensors except temperature are simulated.
-// They are estimated based on correlations with the real temperature sensor.
-
+// Simulated sensors (return cached values from ecosystem simulation)
 float getTurbidity() {
-  // Turbidity varies with temperature
-  float temp = currentReadings.temperature;
-  float turbidity = 5.0 + (temp - 20) * 0.3;
-  return constrain(turbidity, 0.0, 100.0);
+  return currentReadings.turbidity;
 }
 
 float getDissolvedOxygen() {
-  // DO inversely correlates with temperature
-  float temp = currentReadings.temperature;
-  float do_val = 10.0 - (temp - 20) * 0.15;
-  return constrain(do_val, 0.0, 14.0);
+  return currentReadings.dissolvedOxygen;
 }
 
 float getPH() {
-  // pH varies slightly with temperature
-  float temp = currentReadings.temperature;
-  float ph = 7.0 + (temp - 20) * 0.02;
-  return constrain(ph, 4.0, 10.0);
+  return currentReadings.ph;
 }
 
 float getAmmonia() {
-  // Ammonia increases with temperature
-  float temp = currentReadings.temperature;
-  float ammonia = 0.2 + (temp - 20) * 0.02;
-  return constrain(ammonia, 0.0, 5.0);
+  return currentReadings.ammonia;
 }
 
 float getH2S() {
-  // H2S varies with temperature
-  float temp = currentReadings.temperature;
-  float h2s = 0.1 + (temp - 20) * 0.01;
-  return constrain(h2s, 0.0, 1.0);
+  return currentReadings.h2s;
 }
 
 float getBOD() {
-  // BOD correlates with temperature
-  float temp = currentReadings.temperature;
-  float bod = 2.0 + (temp - 20) * 0.1;
-  return constrain(bod, 0.0, 50.0);
+  return currentReadings.bod;
 }
 
 float getCO2() {
-  // CO2 estimated from temperature
-  float temp = currentReadings.temperature;
-  float co2 = 10.0 + (temp - 20) * 0.5;
-  return constrain(co2, 0.0, 100.0);
+  return currentReadings.co2;
 }
 
 float getAlkalinity() {
-  float temp = currentReadings.temperature;
-  float alkalinity = 100.0 + (temp - 20) * 2.0;
-  return constrain(alkalinity, 20.0, 500.0);
+  return currentReadings.alkalinity;
 }
 
 float getHardness() {
-  float temp = currentReadings.temperature;
-  float hardness = 150.0 + (temp - 20) * 3.0;
-  return constrain(hardness, 50.0, 500.0);
+  return currentReadings.hardness;
 }
 
 float getCalcium() {
-  // Calcium estimated from temperature
-  float temp = currentReadings.temperature;
-  float calcium = 60.0 + (temp - 20) * 1.0;
-  return constrain(calcium, 20.0, 200.0);
+  return currentReadings.calcium;
 }
 
 float getNitrite() {
-  // Nitrite estimated from temperature
-  float temp = currentReadings.temperature;
-  float nitrite = 0.05 + (temp - 20) * 0.01;
-  return constrain(nitrite, 0.0, 5.0);
+  return currentReadings.nitrite;
 }
 
 float getPhosphorus() {
-  // Phosphorus estimated from temperature
-  float temp = currentReadings.temperature;
-  float phosphorus = 0.5 + (temp - 20) * 0.02;
-  return constrain(phosphorus, 0.0, 10.0);
+  return currentReadings.phosphorus;
 }
 
 float getPlankton() {
-  // Plankton estimated from temperature
-  float temp = currentReadings.temperature;
-  float plankton = 100.0 + (temp - 20) * 5.0;
-  return constrain(plankton, 0.0, 1000.0);
+  return currentReadings.plankton;
 }
 
 // ============================================
@@ -369,8 +497,6 @@ void sendSensorData() {
   // Read all physical sensors once and cache
   readPhysicalSensors();
 
-  sensors.requestTemperatures();
-
   // Collect all sensor readings (simulated ones use cached values)
   StaticJsonDocument<512> doc;  // Reduced from 1024 (actual need ~300-400 bytes)
   doc["device_id"] = device_id;
@@ -490,6 +616,7 @@ void setup() {
   
   // Connect WiFi (will also start NTP sync)
   connectWiFi();
+  sendSensorData();  // Send initial data immediately on startup
 }
 
 void loop() {

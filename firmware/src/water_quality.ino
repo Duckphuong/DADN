@@ -12,12 +12,7 @@ const char* WIFI_PASSWORD = "your_wifi_password";
 const char* BACKEND_URL = "http://your-backend-ip:5000/prediction/predict";
 
 // Sensor Pin Assignments 
-const int PIN_TEMP = 4;            // Temperature - DS18B20 (1-Wire digital)
-const int PIN_TURBIDITY = 36;     // Turbidity (real, analog)
-const int PIN_DO = 35;            // Dissolved Oxygen (real, analog)
-const int PIN_PH = 34;            // pH (real, analog)
-const int PIN_AMMONIA = 33;       // NH3 (real, analog)
-const int PIN_H2S = 32;           // H2S (real, analog)
+const int PIN_TEMP = 4;            // Temperature - DS18B20 (1-Wire digital, REAL SENSOR)
 
 // OneWire setup for DS18B20
 OneWire oneWire(PIN_TEMP);
@@ -37,131 +32,122 @@ const unsigned long WIFI_RETRY_DELAY = 500;
 
 struct SensorReadings {
   float temperature;
-  float turbidity;       // raw voltage
-  float dissolvedOxygen; // raw voltage
-  float ph;              // raw voltage
-  float ammonia;         // raw voltage
-  float h2s;             // raw voltage
 };
 SensorReadings currentReadings;
 
 // ============================================
-// LOW-LEVEL SENSOR READING
+// SENSOR READING
 // ============================================
 
-float readAnalog(int pin) {
-  int raw = analogRead(pin);
-  // Convert to voltage (ESP32 ADC is 12-bit: 0-4095)
-  float voltage = raw * (3.3 / 4095.0);
-  return voltage;
-}
-
-// Optional: average multiple readings for stability
-float readAverage(int pin, int samples = NUM_SAMPLES) {
-  float sum = 0;
-  for (int i = 0; i < samples; i++) {
-    sum += readAnalog(pin);
-    delay(10);
-  }
-  return sum / samples;
-}
-
-// Read all physical sensors once and cache values
+// Read the real temperature sensor and cache value
 void readPhysicalSensors() {
+  // Only read the real temperature sensor (DS18B20)
   sensors.requestTemperatures();
   currentReadings.temperature = sensors.getTempCByIndex(0);
-  currentReadings.turbidity = readAverage(PIN_TURBIDITY, NUM_SAMPLES);
-  currentReadings.dissolvedOxygen = readAverage(PIN_DO, NUM_SAMPLES);
-  currentReadings.ph = readAverage(PIN_PH, NUM_SAMPLES);
-  currentReadings.ammonia = readAverage(PIN_AMMONIA, NUM_SAMPLES);
-  currentReadings.h2s = readAverage(PIN_H2S, NUM_SAMPLES);
 }
 
 
 // ============================================
-// REAL SENSOR FUNCTIONS 
+// REAL SENSOR FUNCTION
 // ============================================
 
 float getTemperature() {
   return currentReadings.temperature;
 }
 
+// ============================================
+// SIMULATED SENSOR FUNCTIONS (13 software-generated values)
+// ============================================
+
+// All sensors except temperature are simulated.
+// They are estimated based on correlations with the real temperature sensor.
+
 float getTurbidity() {
-  return currentReadings.turbidity * 1000.0;
+  // Turbidity varies with temperature
+  float temp = currentReadings.temperature;
+  float turbidity = 5.0 + (temp - 20) * 0.3;
+  return constrain(turbidity, 0.0, 100.0);
 }
 
 float getDissolvedOxygen() {
-  return currentReadings.dissolvedOxygen * 10.0;
+  // DO inversely correlates with temperature
+  float temp = currentReadings.temperature;
+  float do_val = 10.0 - (temp - 20) * 0.15;
+  return constrain(do_val, 0.0, 14.0);
 }
 
 float getPH() {
-  return currentReadings.ph * (14.0 / 3.3);
+  // pH varies slightly with temperature
+  float temp = currentReadings.temperature;
+  float ph = 7.0 + (temp - 20) * 0.02;
+  return constrain(ph, 4.0, 10.0);
 }
 
 float getAmmonia() {
-  return currentReadings.ammonia * 10.0;
+  // Ammonia increases with temperature
+  float temp = currentReadings.temperature;
+  float ammonia = 0.2 + (temp - 20) * 0.02;
+  return constrain(ammonia, 0.0, 5.0);
 }
 
 float getH2S() {
-  return currentReadings.h2s * 10.0;
+  // H2S varies with temperature
+  float temp = currentReadings.temperature;
+  float h2s = 0.1 + (temp - 20) * 0.01;
+  return constrain(h2s, 0.0, 1.0);
 }
 
-// ============================================
-// SIMULATED SENSOR FUNCTIONS (8 software-generated values)
-// ============================================
-
-// These sensors are not physically connected.
-// They are estimated based on correlations with real sensors.
-
 float getBOD() {
-  // BOD correlates with DO and temperature
+  // BOD correlates with temperature
   float temp = currentReadings.temperature;
-  float do_val = currentReadings.dissolvedOxygen * 10.0;  // to mg/L
-  float bod = 2.0 + (10.0 - do_val) * 0.5 + (temp - 20) * 0.1;
+  float bod = 2.0 + (temp - 20) * 0.1;
   return constrain(bod, 0.0, 50.0);
 }
 
 float getCO2() {
-  // CO2 estimated from pH and temperature
-  float ph = currentReadings.ph * (14.0 / 3.3);  // to pH
-  float co2 = 10.0 * (7.0 - ph) + 5.0;
+  // CO2 estimated from temperature
+  float temp = currentReadings.temperature;
+  float co2 = 10.0 + (temp - 20) * 0.5;
   return constrain(co2, 0.0, 100.0);
 }
 
 float getAlkalinity() {
-  float ph = currentReadings.ph * (14.0 / 3.3);
-  float alkalinity = 100.0 + (ph - 7.0) * 20.0;
+  float temp = currentReadings.temperature;
+  float alkalinity = 100.0 + (temp - 20) * 2.0;
   return constrain(alkalinity, 20.0, 500.0);
 }
 
 float getHardness() {
-  float ph = currentReadings.ph * (14.0 / 3.3);
-  float turbidity = currentReadings.turbidity * 1000.0;  // to NTU
-  float hardness = 150.0 + ph * 10.0 + turbidity * 5.0;
+  float temp = currentReadings.temperature;
+  float hardness = 150.0 + (temp - 20) * 3.0;
   return constrain(hardness, 50.0, 500.0);
 }
 
 float getCalcium() {
-  float hardness = getHardness();
-  return hardness * 0.6;
+  // Calcium estimated from temperature
+  float temp = currentReadings.temperature;
+  float calcium = 60.0 + (temp - 20) * 1.0;
+  return constrain(calcium, 20.0, 200.0);
 }
 
 float getNitrite() {
-  float ammonia = currentReadings.ammonia * 10.0;  // to mg/L
-  float nitrite = ammonia * 0.2;
+  // Nitrite estimated from temperature
+  float temp = currentReadings.temperature;
+  float nitrite = 0.05 + (temp - 20) * 0.01;
   return constrain(nitrite, 0.0, 5.0);
 }
 
 float getPhosphorus() {
-  float turbidity = currentReadings.turbidity * 1000.0;
-  float phosphorus = turbidity * 0.5;
+  // Phosphorus estimated from temperature
+  float temp = currentReadings.temperature;
+  float phosphorus = 0.5 + (temp - 20) * 0.02;
   return constrain(phosphorus, 0.0, 10.0);
 }
 
 float getPlankton() {
-  float turbidity = currentReadings.turbidity * 1000.0;
-  float do_val = currentReadings.dissolvedOxygen * 10.0;
-  float plankton = turbidity * 2.0 + (8.0 - do_val) * 0.5;
+  // Plankton estimated from temperature
+  float temp = currentReadings.temperature;
+  float plankton = 100.0 + (temp - 20) * 5.0;
   return constrain(plankton, 0.0, 1000.0);
 }
 
@@ -276,13 +262,8 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
   Serial.println("\n=== Water Quality Sensor Firmware ===");
+  Serial.println("Mode: One real temperature sensor (DS18B20) + simulated sensors");
   sensors.begin();
-
-  pinMode(PIN_TURBIDITY, INPUT);
-  pinMode(PIN_DO, INPUT);
-  pinMode(PIN_PH, INPUT);
-  pinMode(PIN_AMMONIA, INPUT);
-  pinMode(PIN_H2S, INPUT);
 
   connectWiFi();
 }

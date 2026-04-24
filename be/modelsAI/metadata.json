@@ -1,0 +1,27 @@
+{
+  "RandomForest": {
+    "accuracy": 1.0,
+    "path": "modelsAI\\RandomForest.pkl",
+    "use_scaler": false
+  },
+  "GradientBoosting": {
+    "accuracy": 0.997906976744186,
+    "path": "modelsAI\\GradientBoosting.pkl",
+    "use_scaler": false
+  },
+  "LogisticRegression": {
+    "accuracy": 0.8351162790697675,
+    "path": "modelsAI\\LogisticRegression.pkl",
+    "use_scaler": true
+  },
+  "SVM": {
+    "accuracy": 0.9618604651162791,
+    "path": "modelsAI\\SVM.pkl",
+    "use_scaler": true
+  },
+  "KNN": {
+    "accuracy": 0.912093023255814,
+    "path": "modelsAI\\KNN.pkl",
+    "use_scaler": true
+  }
+}

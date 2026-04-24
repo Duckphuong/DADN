@@ -342,6 +342,44 @@ Path params:
 
 Body: none.
 
+### GET /api/v1/alerts/settings/email
+
+Auth: required.
+
+Input: none.
+
+Response:
+Returns the current email notification setting for the authenticated user.
+```json
+{
+  "enabled": true
+}
+```
+
+### PUT /api/v1/alerts/settings/email
+
+Auth: required.
+
+Content-Type:
+
+```http
+Content-Type: application/json
+```
+
+Body:
+
+```json
+{
+  "enabled": false
+}
+```
+
+Fields:
+
+| Field | Required | Type | Notes |
+| --- | --- | --- | --- |
+| `enabled` | yes | boolean | True to enable email alerts, False to disable. |
+
 ## Prediction / AI
 
 ### GET /prediction/test-db

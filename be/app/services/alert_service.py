@@ -18,7 +18,7 @@ class AlertService:
         self.email = email
         self.password = password
         self.enabled = enabled
-        self.last_email_time = None  
+        self.last_email_time = {}  # Lưu thời gian gửi cảnh báo chất lượng nước của từng sensor
         self.last_sensor_error_time = {}  # Lưu thời gian gửi mail lỗi cuối cùng của từng sensor
         self._sensor_alert_lock = Lock()
         self._pending_sensor_alerts = set()
@@ -56,9 +56,11 @@ class AlertService:
                             owner_id = sensor.get("userId")
                             o_id = ObjectId(owner_id) if isinstance(owner_id, str) and len(owner_id) == 24 else owner_id
                             user = db.get_collection("users").find_one({"_id": o_id})
-                            
                             if user and "email" in user:
-                                target_email = user.get("email")
+                                if user.get("email_notifications_enabled", True):
+                                    target_email = user.get("email")
+                                else:
+                                    print(f"User {owner_id} has disabled email notifications.", flush=True)
                 except Exception as e:
                     print(f"Error fetching target email from DB: {e}", flush=True)
 
@@ -73,7 +75,8 @@ class AlertService:
                 if success:
                     # Update to processed
                     coll.update_one({"_id": doc["_id"]}, {"$set": {"is_email_processed": True}})
-                    self.last_email_time = datetime.now(timezone.utc)
+                    sensor_id_str = str(doc.get("id_sensor") or doc.get("input_sensor_id"))
+                    self.last_email_time[sensor_id_str] = datetime.now(timezone.utc)
                 else:
                     print(f"Failed to send alert email for {doc['_id']}.", flush=True)
 
@@ -81,19 +84,20 @@ class AlertService:
         """Determine if an alert should be sent based on prediction data."""
         wqi_score = doc.get("wqi_score", 100)
         contamination_risk = doc.get("contamination_risk", "Low Risk")
+        sensor_id_str = str(doc.get("id_sensor") or doc.get("input_sensor_id"))
 
         # Send alert if WQI < 50 or contamination risk is high
         if wqi_score < 50 or contamination_risk in ["High Risk", "Critical"]:
-            # Anti-spam logic
-            if self.last_email_time is None:
+            # Anti-spam logic per sensor
+            last_time = self.last_email_time.get(sensor_id_str)
+            if last_time is None:
                 return True
-            time_diff = datetime.now(timezone.utc) - self.last_email_time
-            if contamination_risk in ["High Risk", "Critical"]:
-                # Send immediately for critical
+                
+            time_diff = datetime.now(timezone.utc) - last_time
+            # Wait 2 hours to avoid spam, even for critical risks
+            if time_diff >= self.SENSOR_ALERT_COOLDOWN:
                 return True
-            else:
-                # Wait 2 hours for non-critical
-                return time_diff >= timedelta(hours=2)
+                
         return False
 
     def _send_alert_email(self, doc, target_email, sensor):
@@ -337,9 +341,11 @@ class AlertService:
                 owner_id = sensor.get("userId")
                 o_id = ObjectId(owner_id) if isinstance(owner_id, str) and len(owner_id) == 24 else owner_id
                 user = db.get_collection("users").find_one({"_id": o_id})
-                
                 if user and "email" in user:
-                    target_email = user.get("email")
+                    if user.get("email_notifications_enabled", True):
+                        target_email = user.get("email")
+                    else:
+                        print(f"User {owner_id} disabled email notifications for sensor error.", flush=True)
             
             if not target_email:
                 print(f"No linked email found to notify sensor error (Sensor: {sensor_id}).", flush=True)

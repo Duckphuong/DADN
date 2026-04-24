@@ -3,57 +3,21 @@
 #include <ArduinoJson.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
-#include <Preferences.h>
+#include <WiFiManager.h>
 #include <NTPClient.h>
-#include <WiFiUdp.h>
+#include <WiFiUDP.h>
 #include <SPIFFS.h>
 #include <FS.h>
 #include <vector>
 #include <math.h>
 
 // ============================================
-// CONFIGURATION MANAGEMENT
+// CONFIGURATION
 // ============================================
 
-// Configuration keys for Preferences storage
-#define PREF_NAMESPACE "water_quality"
-#define PREF_WIFI_SSID "wifi_ssid"
-#define PREF_WIFI_PASS "wifi_pass"
-#define PREF_BACKEND_URL "backend_url"
-
-// Default values (fallback if not configured)
-const char* DEFAULT_WIFI_SSID = "your_wifi_ssid";
-const char* DEFAULT_WIFI_PASSWORD = "your_wifi_password";
-const char* DEFAULT_BACKEND_URL = "http://your-backend-ip:5000/prediction/predict";
-
-// Runtime configuration (loaded from Preferences)
-String config_wifi_ssid;
-String config_wifi_password;
-String config_backend_url;
-
-// Load configuration from NVS (Preferences)
-void loadConfig() {
-  Preferences prefs;
-  prefs.begin(PREF_NAMESPACE, true); // read-only
-  
-  config_wifi_ssid = prefs.getString(PREF_WIFI_SSID, DEFAULT_WIFI_SSID);
-  config_wifi_password = prefs.getString(PREF_WIFI_PASS, DEFAULT_WIFI_PASSWORD);
-  config_backend_url = prefs.getString(PREF_BACKEND_URL, DEFAULT_BACKEND_URL);
-  
-  prefs.end();
-}
-
-// Save configuration to NVS (for setup mode)
-void saveConfig(const char* ssid, const char* pass, const char* url) {
-  Preferences prefs;
-  prefs.begin(PREF_NAMESPACE, false);
-  
-  prefs.putString(PREF_WIFI_SSID, ssid);
-  prefs.putString(PREF_WIFI_PASS, pass);
-  prefs.putString(PREF_BACKEND_URL, url);
-  
-  prefs.end();
-}
+// Backend API endpoint (hardcoded - change in code before uploading)
+// To make this configurable, add WiFiManager custom parameter or Serial command interface
+const char* BACKEND_URL = "http://your-backend-ip:5000/prediction/predict";
 
 // ============================================
 // CONSTANTS
@@ -68,10 +32,6 @@ DallasTemperature sensors(&oneWire);
 
 // Sampling interval (milliseconds)
 const unsigned long SAMPLING_INTERVAL = 60000;  // 1 minute
-
-// WiFi reconnection backoff
-const int WIFI_MAX_ATTEMPTS = 20;
-const unsigned long WIFI_RETRY_DELAY = 500;
 
 // HTTP retry settings
 const int HTTP_MAX_RETRIES = 3;
@@ -381,35 +341,36 @@ float getPlankton() {
 bool connectWiFi() {
   if (WiFi.status() == WL_CONNECTED) return true;
 
-  DEBUG_PRINTLN("Connecting to WiFi...");
-  WiFi.begin(config_wifi_ssid.c_str(), config_wifi_password.c_str());
+  DEBUG_PRINTLN("Connecting to WiFi using WiFiManager...");
+  
+  // Initialize WiFiManager
+  WiFiManager wifiManager;
+  
+  // Set timeout for config portal (3 minutes)
+  wifiManager.setConfigPortalTimeout(180);
+  
+  // Try to connect - will start config portal if no saved credentials
+  bool connected = wifiManager.autoConnect("WaterSensor_Config", "12345678");
 
-  int attempt = 0;
-  unsigned long lastPrint = millis();
-
-  while (WiFi.status() != WL_CONNECTED && attempt < WIFI_MAX_ATTEMPTS) {
-    if (millis() - lastPrint >= 500) {
-      DEBUG_PRINT(".");
-      lastPrint = millis();
-    }
-    delay(100);
-    attempt++;
+  if (!connected) {
+    DEBUG_PRINTLN("WiFi connection failed, restarting...");
+    delay(3000);
+    ESP.restart();
+    return false;  // Won't reach here, but for completeness
   }
 
-  if (WiFi.status() == WL_CONNECTED) {
-    DEBUG_PRINTLN("\nConnected! IP address: ");
-    DEBUG_PRINTLN(WiFi.localIP());
-    // Start NTP sync if not already initialized
-    if (!ntpInitialized) {
-      ntpClient.begin();
-      ntpInitialized = true;
-    }
-    ntpClient.update();
-    return true;
-  } else {
-    DEBUG_PRINTLN("\nFailed to connect to WiFi");
-    return false;
+  DEBUG_PRINTLN("\nWiFi connected successfully!");
+  DEBUG_PRINT("IP Address: ");
+  DEBUG_PRINTLN(WiFi.localIP());
+
+  // Start NTP sync if not already initialized
+  if (!ntpInitialized) {
+    ntpClient.begin();
+    ntpInitialized = true;
   }
+  ntpClient.update();
+
+  return true;
 }
 
 // ============================================
@@ -461,10 +422,10 @@ void retryQueuedData() {
   
   // Retry each payload
   for (String& payload : queuedPayloads) {
-    if (WiFi.status() == WL_CONNECTED) {
-      HTTPClient http;
-      http.begin(config_backend_url.c_str());
-      http.addHeader("Content-Type", "application/json");
+      if (WiFi.status() == WL_CONNECTED) {
+        HTTPClient http;
+        http.begin(BACKEND_URL);
+        http.addHeader("Content-Type", "application/json");
       
       int httpCode = http.POST(payload);
       
@@ -528,10 +489,10 @@ void sendSensorData() {
     bool success = false;
     int attempt = 0;
     
-    while (!success && attempt < HTTP_MAX_RETRIES) {
-      HTTPClient http;
-      http.begin(config_backend_url.c_str());
-      http.addHeader("Content-Type", "application/json");
+     while (!success && attempt < HTTP_MAX_RETRIES) {
+       HTTPClient http;
+       http.begin(BACKEND_URL);
+       http.addHeader("Content-Type", "application/json");
 
       int httpCode = http.POST(jsonString);
 
@@ -595,9 +556,6 @@ void setup() {
   delay(1000);
   DEBUG_PRINTLN("\n=== Water Quality Sensor Firmware ===");
   DEBUG_PRINTLN("Mode: One real temperature sensor (DS18B20) + simulated sensors");
-  
-  // Load configuration from Preferences
-  loadConfig();
   
   // Initialize SPIFFS for data queue
   initSPIFFS();

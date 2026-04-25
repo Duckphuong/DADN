@@ -26,8 +26,8 @@ class MongoAnalyticsRepository(AnalyticsRepository):
         date_range: DateRange,
         timezone_name: str,
     ) -> dict[str, dict[str, float | None]]:
-        active_sensors = self._get_active_sensor_documents(user_id)
-        sensor_ids = self._build_sensor_id_lookup_values(active_sensors)
+        sensors = self._get_sensor_documents(user_id)
+        sensor_ids = self._build_sensor_id_lookup_values(sensors)
         if not sensor_ids:
             return {}
 
@@ -92,12 +92,12 @@ class MongoAnalyticsRepository(AnalyticsRepository):
         date_range: DateRange,
         sample_size: int,
     ) -> list[TurbidityComparisonPoint]:
-        active_sensors = self._get_active_sensor_documents(user_id)
-        sensor_ids = self._build_sensor_id_lookup_values(active_sensors)
+        sensors = self._get_sensor_documents(user_id)
+        sensor_ids = self._build_sensor_id_lookup_values(sensors)
         if not sensor_ids:
             return []
 
-        sensors_by_id = {str(sensor["_id"]): sensor for sensor in active_sensors}
+        sensors_by_id = {str(sensor["_id"]): sensor for sensor in sensors}
         pipeline = [
             {
                 "$match": {
@@ -156,22 +156,10 @@ class MongoAnalyticsRepository(AnalyticsRepository):
 
         return result
 
-    def _get_active_sensor_documents(self, user_id: str) -> list[dict]:
+    def _get_sensor_documents(self, user_id: str) -> list[dict]:
         collection = self._get_sensor_collection()
         user_object_id = parse_object_id(user_id, field_name="userId")
-        query = {
-            "userId": user_object_id,
-            "isDeleted": False,
-            # TODO: The current SensorStation domain represents usable sensors as
-            # status=ONLINE, while the dashboard requirement says "active".
-            # Keep this filter isolated so it can be narrowed when a canonical
-            # active flag/status is finalized.
-            "$or": [
-                {"active": True},
-                {"isActive": True},
-                {"status": {"$in": ["ACTIVE", "ONLINE"]}},
-            ],
-        }
+        query = self._build_owned_sensor_query(user_object_id)
 
         try:
             return list(
@@ -185,7 +173,14 @@ class MongoAnalyticsRepository(AnalyticsRepository):
                 )
             )
         except PyMongoError as exc:
-            raise InfrastructureError("Failed to fetch active sensors") from exc
+            raise InfrastructureError("Failed to fetch sensors") from exc
+
+    @staticmethod
+    def _build_owned_sensor_query(user_object_id) -> dict:
+        return {
+            "userId": user_object_id,
+            "isDeleted": False,
+        }
 
     @staticmethod
     def _build_sensor_id_lookup_values(sensors: list[dict]) -> list:

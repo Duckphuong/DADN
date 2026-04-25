@@ -1,7 +1,13 @@
-from app.application.auth.commands import LoginUserCommand, LoginUserResult, RegisterUserCommand
+from app.application.auth.commands import (
+    ChangePasswordCommand,
+    LoginUserCommand,
+    LoginUserResult,
+    RegisterUserCommand,
+)
 from app.application.auth.interfaces import UserRepository
 from app.application.auth.use_cases import (
     AuthenticateUserUseCase,
+    ChangePasswordUseCase,
     LoginUserUseCase,
     LogoutUserUseCase,
     RegisterUserUseCase,
@@ -9,6 +15,8 @@ from app.application.auth.use_cases import (
 
 __all__ = [
     "AuthenticateUserUseCase",
+    "ChangePasswordCommand",
+    "ChangePasswordUseCase",
     "LoginUserCommand",
     "LoginUserResult",
     "LoginUserUseCase",

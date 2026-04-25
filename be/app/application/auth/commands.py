@@ -33,3 +33,10 @@ class UpdateUserCommand:
     url_avatar: str | None = None
     role: str | None = None
     status: str | None = None
+
+
+@dataclass(slots=True)
+class ChangePasswordCommand:
+    user_id: str
+    current_password: str
+    new_password: str

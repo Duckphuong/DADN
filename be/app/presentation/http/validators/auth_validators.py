@@ -1,4 +1,5 @@
 from app.application.auth.commands import (
+    ChangePasswordCommand,
     LoginUserCommand,
     RegisterUserCommand,
     UpdateUserCommand,
@@ -67,6 +68,24 @@ def validate_update_user_request(payload: dict, *, user_id: str) -> UpdateUserCo
     )
 
 
+def validate_change_password_request(
+    payload: dict,
+    *,
+    user_id: str,
+) -> ChangePasswordCommand:
+    if not isinstance(payload, dict):
+        raise ValidationError("Invalid JSON payload")
+
+    current_password = _get_required_password(payload, "currentPassword")
+    new_password = _get_required_password(payload, "newPassword")
+
+    return ChangePasswordCommand(
+        user_id=validate_user_id(user_id),
+        current_password=current_password,
+        new_password=new_password,
+    )
+
+
 def validate_user_id(user_id: str) -> str:
     normalized_user_id = (user_id or "").strip()
     if not normalized_user_id:
@@ -83,3 +102,10 @@ def _get_optional_string(payload: dict, field_name: str) -> str | None:
         raise ValidationError(f"{field_name} must be a string")
 
     return value.strip()
+
+
+def _get_required_password(payload: dict, field_name: str) -> str:
+    value = payload.get(field_name)
+    if not isinstance(value, str) or value == "":
+        raise ValidationError(f"{field_name} is required")
+    return value

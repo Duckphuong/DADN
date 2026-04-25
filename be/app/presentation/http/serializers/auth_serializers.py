@@ -39,6 +39,10 @@ def serialize_logout_response(message: str) -> dict:
     return {"message": message}
 
 
+def serialize_change_password_response(message: str) -> dict:
+    return {"message": message}
+
+
 def serialize_current_user_response(user: User) -> dict:
     return serialize_user(user)
 

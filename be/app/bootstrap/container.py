@@ -5,6 +5,7 @@ from app.infrastructure.persistence.mongo.repositories.analytics_repository impo
 from app.infrastructure.persistence.mongo.repositories.sensor_data_repository import MongoSensorDataRepository
 from app.application.auth.use_cases import (
     AuthenticateUserUseCase,
+    ChangePasswordUseCase,
     DeleteUserUseCase,
     GetUserUseCase,
     ListUsersUseCase,
@@ -43,6 +44,7 @@ class ApplicationContainer:
     list_users_use_case: ListUsersUseCase
     get_user_use_case: GetUserUseCase
     update_user_use_case: UpdateUserUseCase
+    change_password_use_case: ChangePasswordUseCase
     delete_user_use_case: DeleteUserUseCase
     create_sensor_station_use_case: CreateSensorStationUseCase
     list_sensor_stations_use_case: ListSensorStationsUseCase
@@ -85,6 +87,10 @@ def build_container(config) -> ApplicationContainer:
         list_users_use_case=ListUsersUseCase(user_repository),
         get_user_use_case=GetUserUseCase(user_repository),
         update_user_use_case=UpdateUserUseCase(user_repository),
+        change_password_use_case=ChangePasswordUseCase(
+            user_repository,
+            password_hasher,
+        ),
         delete_user_use_case=DeleteUserUseCase(user_repository),
         create_sensor_station_use_case=CreateSensorStationUseCase(
             sensor_station_repository

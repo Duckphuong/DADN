@@ -6,6 +6,7 @@ from app.presentation.http.dependencies import get_container
 from app.presentation.http.errors import map_application_error
 from app.presentation.http.middleware.auth_middleware import jwt_required
 from app.presentation.http.serializers.auth_serializers import (
+    serialize_change_password_response,
     serialize_current_user_response,
     serialize_login_response,
     serialize_logout_response,
@@ -14,6 +15,7 @@ from app.presentation.http.serializers.auth_serializers import (
     serialize_user_response,
 )
 from app.presentation.http.validators.auth_validators import (
+    validate_change_password_request,
     validate_login_request,
     validate_register_request,
     validate_update_user_request,
@@ -61,6 +63,23 @@ def logout():
 @jwt_required
 def get_current_user():
     return jsonify(serialize_current_user_response(g.current_user)), 200
+
+
+@auth_bp.patch("/password")
+@jwt_required
+def change_password():
+    try:
+        command = validate_change_password_request(
+            request.get_json(silent=True) or {},
+            user_id=g.current_user.id or "",
+        )
+        get_container().change_password_use_case.execute(command)
+        return jsonify(
+            serialize_change_password_response("Password changed successfully")
+        ), 200
+    except ApplicationError as exc:
+        payload, status_code = map_application_error(exc)
+        return jsonify(payload), status_code
 
 
 @auth_bp.get("/users")

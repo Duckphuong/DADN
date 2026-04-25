@@ -83,6 +83,10 @@ class User:
         self.status = USER_STATUS_INACTIVE
         self.updated_at = utc_now()
 
+    def change_password(self, *, password_hash: str) -> None:
+        self.password_hash = self._normalize_password_hash(password_hash)
+        self.updated_at = utc_now()
+
     @staticmethod
     def normalize_email(email: str) -> str:
         normalized_email = (email or "").strip().lower()

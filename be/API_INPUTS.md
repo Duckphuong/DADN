@@ -98,6 +98,37 @@ Auth: required.
 
 Input: none.
 
+### PATCH /auth/password
+
+Auth: required.
+
+Content-Type:
+
+```http
+Content-Type: application/json
+```
+
+Body:
+
+```json
+{
+  "currentPassword": "secret",
+  "newPassword": "new-secret"
+}
+```
+
+Fields:
+
+| Field | Required | Type | Notes |
+| --- | --- | --- | --- |
+| `currentPassword` | yes | string | Must match the current password of the authenticated user. |
+| `newPassword` | yes | string | Must not be empty. |
+
+Notes:
+
+- `userId` is taken from JWT.
+- Do not pass `userId` in body or query params.
+
 ### GET /auth/users
 
 Auth: required, admin only.
@@ -306,17 +337,23 @@ Query params:
 
 ## Analytics
 
-### GET /api/analytics/trends
+### GET /api/analytics/trends?date=YYYY-MM-DD
 
 Auth: required.
 
-Input: none.
+Query params:
+
+| Param | Required | Type | Default | Notes |
+| --- | --- | --- | --- | --- |
+| `date` | no | string | yesterday | Date to fetch analytics for, format `YYYY-MM-DD`. |
 
 Notes:
 
 - `userId` is taken from the JWT token.
 - Do not pass `userId` in query params.
-- Data scope is yesterday only, based on application/server timezone unless `ANALYTICS_TIMEZONE` is configured.
+- If `date` is omitted, backend keeps the current behavior and returns data for yesterday.
+- Date range is calculated in application/server timezone unless `ANALYTICS_TIMEZONE` is configured.
+- Analytics includes all non-deleted sensors of the authenticated user, regardless of `ONLINE` or `OFFLINE` status.
 
 ## Alerts
 

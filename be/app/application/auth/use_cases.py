@@ -1,4 +1,5 @@
 from app.application.auth.commands import (
+    ChangePasswordCommand,
     LoginUserCommand,
     LoginUserResult,
     RegisterUserCommand,
@@ -160,6 +161,40 @@ class UpdateUserUseCase:
         except DomainValidationError as exc:
             raise ValidationError(str(exc)) from exc
 
+        return self._user_repository.update(user)
+
+
+class ChangePasswordUseCase:
+    def __init__(
+        self,
+        user_repository: UserRepository,
+        password_hasher: PasswordHasher,
+    ) -> None:
+        self._user_repository = user_repository
+        self._password_hasher = password_hasher
+
+    def execute(self, command: ChangePasswordCommand) -> User:
+        normalized_user_id = (command.user_id or "").strip()
+        if not normalized_user_id:
+            raise ValidationError("user id is required")
+        if not command.current_password:
+            raise ValidationError("currentPassword is required")
+        if not command.new_password:
+            raise ValidationError("newPassword is required")
+
+        user = self._user_repository.get_by_id(normalized_user_id)
+        if user is None:
+            raise NotFoundError("User not found")
+
+        if not self._password_hasher.verify(
+            command.current_password,
+            user.password_hash,
+        ):
+            raise AuthenticationError("Current password is incorrect")
+
+        user.change_password(
+            password_hash=self._password_hasher.hash(command.new_password)
+        )
         return self._user_repository.update(user)
 
 

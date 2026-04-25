@@ -5,6 +5,7 @@ from app.application.analytics.interfaces import AnalyticsRepository
 from app.application.analytics.models import AnalyticsTrendsResult
 from app.application.analytics.time_buckets import (
     build_trend_output,
+    get_date_range_for_day,
     get_server_timezone,
     get_yesterday_date_range,
 )
@@ -28,7 +29,11 @@ class GetAnalyticsTrendsUseCase:
 
         app_timezone = _resolve_timezone(self._timezone_name)
         timezone_name = self._timezone_name or _timezone_to_mongo_name(app_timezone)
-        date_range = get_yesterday_date_range(timezone=app_timezone)
+        date_range = (
+            get_date_range_for_day(query.target_date, timezone=app_timezone)
+            if query.target_date is not None
+            else get_yesterday_date_range(timezone=app_timezone)
+        )
 
         bucket_averages = self._analytics_repository.get_trend_bucket_averages(
             user_id=user_id,

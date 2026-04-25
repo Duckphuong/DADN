@@ -82,6 +82,7 @@ class MongoUserRepository(UserRepository):
                 {
                     "$set": {
                         "fullName": user.full_name,
+                        "password": user.password_hash,
                         "urlAvatar": user.url_avatar,
                         "role": user.role,
                         "phoneNumber": user.phone_number,

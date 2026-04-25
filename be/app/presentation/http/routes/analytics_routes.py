@@ -1,4 +1,4 @@
-from flask import Blueprint, g, jsonify
+from flask import Blueprint, g, jsonify, request
 
 from app.application.common.exceptions import ApplicationError
 from app.presentation.http.dependencies import get_container
@@ -21,11 +21,15 @@ def get_analytics_trends():
     """
     GET /api/analytics/trends
 
-    Returns yesterday-only dashboard data for active sensors owned by the
-    authenticated user from the JWT access token.
+    Returns dashboard data for the requested date, or yesterday when `date`
+    is omitted, for sensors owned by the authenticated user from the
+    JWT access token.
     """
     try:
-        query = validate_get_analytics_trends_request(g.current_user.id)
+        query = validate_get_analytics_trends_request(
+            g.current_user.id,
+            requested_date=request.args.get("date"),
+        )
         result = get_container().get_analytics_trends_use_case.execute(query)
         return jsonify(serialize_analytics_trends(result)), 200
     except ApplicationError as exc:

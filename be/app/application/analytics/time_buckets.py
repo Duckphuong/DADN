@@ -1,4 +1,4 @@
-from datetime import datetime, time, timedelta, tzinfo
+from datetime import date, datetime, time, timedelta, tzinfo
 
 from app.application.analytics.models import BucketWindow, DateRange, TrendPoint
 
@@ -26,8 +26,27 @@ def get_yesterday_date_range(
         time.min,
         tzinfo=active_timezone,
     )
-    start_of_yesterday = start_of_today - timedelta(days=1)
-    return DateRange(start_time=start_of_yesterday, end_time=start_of_today)
+    return get_date_range_for_day(
+        start_of_today.date() - timedelta(days=1),
+        timezone=active_timezone,
+    )
+
+
+def get_date_range_for_day(
+    target_date: date,
+    *,
+    timezone: tzinfo | None = None,
+) -> DateRange:
+    active_timezone = timezone or get_server_timezone()
+    start_of_day = datetime.combine(
+        target_date,
+        time.min,
+        tzinfo=active_timezone,
+    )
+    return DateRange(
+        start_time=start_of_day,
+        end_time=start_of_day + timedelta(days=1),
+    )
 
 
 def build_dashboard_buckets(date_range: DateRange) -> list[BucketWindow]:

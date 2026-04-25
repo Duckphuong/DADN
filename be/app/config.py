@@ -2,8 +2,9 @@ import os
 from pathlib import Path
 
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-ENV_FILE = BASE_DIR / ".env"
+APP_DIR = Path(__file__).resolve().parent
+BASE_DIR = APP_DIR.parent
+ENV_FILE = APP_DIR / ".env"
 
 
 def _load_env_file(env_file: Path) -> None:
@@ -53,6 +54,11 @@ class Config:
     SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
     EMAIL = os.getenv("EMAIL", "")
     PASSWORD = os.getenv("PASSWORD", "")
+    ALERT_EMAIL_ENABLED = _get_bool_env("ALERT_EMAIL_ENABLED", True)
     ALERT_EMAIL_TO = os.getenv("ALERT_EMAIL_TO", "")
+    ANALYTICS_TIMEZONE = os.getenv("ANALYTICS_TIMEZONE", "").strip()
     MONGO_CONNECT_TIMEOUT_MS = int(os.getenv("MONGO_CONNECT_TIMEOUT_MS", "5000"))
     MONGO_FAIL_FAST = _get_bool_env("MONGO_FAIL_FAST", False)
+
+    # --- BỔ SUNG CẤU HÌNH GEMINI ---
+    GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')

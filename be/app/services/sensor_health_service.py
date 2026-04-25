@@ -1,5 +1,4 @@
 from datetime import datetime, timezone, timedelta
-import threading
 from pymongo.errors import PyMongoError
 from flask import current_app
  
@@ -36,10 +35,11 @@ class SensorHealthService:
         if status == STATUS_ERROR:
             alert_service = current_app.extensions.get(ALERT_SERVICE)
             if alert_service:
-                threading.Thread(
-                    target=alert_service.send_sensor_error_alert, 
-                    args=(str(sensor_id), status)
-                ).start()
+                alert_service.submit_sensor_error_alert(
+                    current_app._get_current_object(),
+                    str(sensor_id),
+                    status,
+                )
         self._update_sensor_status(sensor_id, status)
         return status
  
@@ -108,13 +108,15 @@ class SensorHealthService:
 
         try:
             alert_service = current_app.extensions.get(ALERT_SERVICE)
+            app = current_app._get_current_object()
             for sensor in db["sensor_informations"].find(offline_query, {"_id": 1}):
                 sensor_id_str = str(sensor["_id"])
                 if alert_service:
-                    threading.Thread(
-                        target=alert_service.send_sensor_error_alert, 
-                        args=(sensor_id_str, "OFFLINE")
-                    ).start()
+                    alert_service.submit_sensor_error_alert(
+                        app,
+                        sensor_id_str,
+                        "OFFLINE",
+                    )
 
             result = db["sensor_informations"].update_many(
                 offline_query,

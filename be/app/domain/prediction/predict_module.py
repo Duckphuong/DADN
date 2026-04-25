@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-from app.domain.shared.time import utc_now
+from app.domain.shared.time import ensure_utc_datetime, utc_now
 
 
 @dataclass(slots=True)
@@ -34,8 +34,9 @@ class PredictModule:
         message: str,
         input_sensor_id: str,
         id_sensor: str,
+        timestamp: datetime | None = None,
     ) -> "PredictModule":
-        timestamp = utc_now()
+        resolved_timestamp = ensure_utc_datetime(timestamp) if timestamp else utc_now()
         return cls(
             wqi_score=wqi_score,
             contamination_risk=contamination_risk,
@@ -48,8 +49,8 @@ class PredictModule:
             input_sensor_id=input_sensor_id,
             id_sensor=id_sensor,
             is_email_processed=False,
-            created_at=timestamp,
-            updated_at=timestamp,
+            created_at=resolved_timestamp,
+            updated_at=resolved_timestamp,
         )
 
     def mark_email_processed(self) -> None:

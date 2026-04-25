@@ -145,3 +145,51 @@ def calculate_time_ago(dt):
     if seconds < 3600:
         return f"{seconds // 60} minute(s) ago"
     return f"{seconds // 3600} hour(s) ago"
+
+@alert_bp.route('/settings/email', methods=['GET'])
+@jwt_required
+def get_email_alerts_setting():
+    try:
+        db = get_mongo_database()
+        if db is None:
+            return jsonify({"error": "MongoDB not connected"}), 500
+            
+        current_user_id = g.current_user.id
+        u_id = ObjectId(current_user_id) if isinstance(current_user_id, str) and len(current_user_id) == 24 else current_user_id
+        
+        user = db.get_collection("users").find_one({"_id": u_id})
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+            
+        # Trả về True nếu trường này chưa tồn tại (mặc định là bật)
+        enabled = user.get("email_notifications_enabled", True)
+        
+        return jsonify({"enabled": enabled}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@alert_bp.route('/settings/email', methods=['PUT'])
+@jwt_required
+def toggle_email_alerts():
+    try:
+        db = get_mongo_database()
+        if db is None:
+            return jsonify({"error": "MongoDB not connected"}), 500
+        
+        data = request.get_json(silent=True) or {}
+        if "enabled" not in data:
+            return jsonify({"error": "Missing 'enabled' field"}), 400
+            
+        enabled = bool(data["enabled"])
+        
+        current_user_id = g.current_user.id
+        u_id = ObjectId(current_user_id) if isinstance(current_user_id, str) and len(current_user_id) == 24 else current_user_id
+        
+        db.get_collection("users").update_one(
+            {"_id": u_id},
+            {"$set": {"email_notifications_enabled": enabled}}
+        )
+        
+        return jsonify({"message": "Email alert settings updated successfully", "enabled": enabled}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

@@ -68,9 +68,15 @@ class AIModelService:
 		X = df[FEATURE_COLUMNS]
 		y = df["Water Quality"]
 
+		# ===== SPLIT DATA =====
+		X_train, X_test, y_train, y_test = train_test_split(
+			X, y, test_size=0.2, random_state=42, stratify=y
+		)
+
 		# ===== SCALER =====
 		scaler = StandardScaler()
-		X_scaled = scaler.fit_transform(X)
+		X_train_scaled = scaler.fit_transform(X_train)
+		X_test_scaled = scaler.transform(X_test)
 
 		scaler_path = os.path.join(self.MODEL_DIR, "scaler.pkl")
 		joblib.dump(scaler, scaler_path)
@@ -86,17 +92,16 @@ class AIModelService:
 		metadata = {}
 
 		for name, model in models.items():
-
 			if name in ["LogisticRegression", "SVM", "KNN"]:
-				model.fit(X_scaled, y)
-				preds = model.predict(X_scaled)
+				model.fit(X_train_scaled, y_train)
+				preds = model.predict(X_test_scaled)
 				use_scaler = True
 			else:
-				model.fit(X, y)
-				preds = model.predict(X)
+				model.fit(X_train, y_train)
+				preds = model.predict(X_test)
 				use_scaler = False
 
-			acc = accuracy_score(y, preds)
+			acc = accuracy_score(y_test, preds)
 
 			path = os.path.join(self.MODEL_DIR, f"{name}.pkl")
 			joblib.dump(model, path)
@@ -109,6 +114,51 @@ class AIModelService:
 
 		with open(os.path.join(self.MODEL_DIR, "metadata.json"), "w") as f:
 			json.dump(metadata, f, indent=2)
+
+		# =====================================================================
+		# [BỔ SUNG: TẠO HỒ SƠ NƯỚC CHUẨN TỪ MODEL TỐT NHẤT]
+		# =====================================================================
+		try:
+			# 1. Tìm model có accuracy cao nhất trong dict metadata
+			best_model_name = max(metadata, key=lambda k: metadata[k]["accuracy"])
+			best_model = models[best_model_name]
+			
+			# 2. Xác định index của nhãn Tốt (Hỗ trợ nhãn là 0, 1 hoặc Excellent, Good)
+			classes = list(best_model.classes_)
+			good_indices = [i for i, c in enumerate(classes) if str(c) in ["0", "1", "Excellent", "Good"]]
+
+			if good_indices:
+				# 3. Lấy xác suất dự đoán (Dùng X_scaled hoặc X tùy vào cấu hình model)
+				if metadata[best_model_name]["use_scaler"]:
+					probs = best_model.predict_proba(X_scaled)
+				else:
+					probs = best_model.predict_proba(X)
+				
+				# 4. Tính tổng xác suất và lọc các mẫu model tốt (>= 85%)
+				good_probs = np.sum(probs[:, good_indices], axis=1)
+				certified_indices = np.where(good_probs >= 0.85)[0]
+				certified_df = X.iloc[certified_indices]
+				
+				# 5. Tính Tứ phân vị (5% - 95%) để tạo vùng an toàn chuẩn
+				if not certified_df.empty:
+					good_profile = {}
+					for col in FEATURE_COLUMNS:
+						good_profile[col] = {
+							"mean": round(float(certified_df[col].mean()), 2),
+							"min_safe": round(float(certified_df[col].quantile(0.05)), 2),
+							"max_safe": round(float(certified_df[col].quantile(0.95)), 2)
+						}
+					
+					profile_path = os.path.join(self.MODEL_DIR, "good_water_profile.json")
+					with open(profile_path, "w", encoding="utf-8") as f:
+						json.dump(good_profile, f, indent=4)
+					print(f"Đã tạo good_water_profile.json từ model {best_model_name} với {len(certified_df)} mẫu.")
+		except Exception as e:
+			print(f"Lỗi khi tạo good_water_profile: {e}")
+
+		# =====================================================================
+		# [BỔ SUNG: TẠO HỒ SƠ NƯỚC CHUẨN TỪ MODEL TỐT NHẤT]
+		# =====================================================================	
 
 		self.metadata = metadata
 		self.load_models()

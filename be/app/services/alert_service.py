@@ -1,25 +1,38 @@
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime, timedelta
-import time
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta, timezone
+from threading import Lock
 from bson import ObjectId
 
 from app.infrastructure.persistence.mongo.connection import get_mongo_database
 
 
 class AlertService:
-    def __init__(self, smtp_server, smtp_port, email, password):
+    SENSOR_ALERT_COOLDOWN = timedelta(hours=2)
+
+    def __init__(self, smtp_server, smtp_port, email, password, enabled=True):
         self.smtp_server = smtp_server
         self.smtp_port = smtp_port
         self.email = email
         self.password = password
-        self.last_email_time = None  
+        self.enabled = enabled
+        self.last_email_time = {}  # Lưu thời gian gửi cảnh báo chất lượng nước của từng sensor
         self.last_sensor_error_time = {}  # Lưu thời gian gửi mail lỗi cuối cùng của từng sensor
+        self._sensor_alert_lock = Lock()
+        self._pending_sensor_alerts = set()
+        self._sensor_alert_executor = ThreadPoolExecutor(
+            max_workers=2,
+            thread_name_prefix="sensor-alert",
+        )
 
 
     def check_and_send_alerts(self):
         """Check predict_module for unprocessed alerts and send emails if needed."""
+        if not self.enabled:
+            return
+
         db = get_mongo_database()
         if db is None:
             print("MongoDB not connected")
@@ -43,21 +56,27 @@ class AlertService:
                             owner_id = sensor.get("userId")
                             o_id = ObjectId(owner_id) if isinstance(owner_id, str) and len(owner_id) == 24 else owner_id
                             user = db.get_collection("users").find_one({"_id": o_id})
-                            
                             if user and "email" in user:
-                                target_email = user.get("email")
+                                if user.get("email_notifications_enabled", True):
+                                    target_email = user.get("email")
+                                else:
+                                    print(f"User {owner_id} has disabled email notifications.", flush=True)
                 except Exception as e:
                     print(f"Error fetching target email from DB: {e}", flush=True)
 
                 if not target_email:
-                    print(f"There is no valid target email for alert {doc['_id']}.", flush=True)
+                    coll.update_one(
+                        {"_id": doc["_id"]},
+                        {"$set": {"is_email_processed": True}},
+                    )
                     continue
 
                 success = self._send_alert_email(doc, target_email, sensor)
                 if success:
                     # Update to processed
                     coll.update_one({"_id": doc["_id"]}, {"$set": {"is_email_processed": True}})
-                    self.last_email_time = datetime.utcnow()
+                    sensor_id_str = str(doc.get("id_sensor") or doc.get("input_sensor_id"))
+                    self.last_email_time[sensor_id_str] = datetime.now(timezone.utc)
                 else:
                     print(f"Failed to send alert email for {doc['_id']}.", flush=True)
 
@@ -65,19 +84,20 @@ class AlertService:
         """Determine if an alert should be sent based on prediction data."""
         wqi_score = doc.get("wqi_score", 100)
         contamination_risk = doc.get("contamination_risk", "Low Risk")
+        sensor_id_str = str(doc.get("id_sensor") or doc.get("input_sensor_id"))
 
         # Send alert if WQI < 50 or contamination risk is high
         if wqi_score < 50 or contamination_risk in ["High Risk", "Critical"]:
-            # Anti-spam logic
-            if self.last_email_time is None:
+            # Anti-spam logic per sensor
+            last_time = self.last_email_time.get(sensor_id_str)
+            if last_time is None:
                 return True
-            time_diff = datetime.utcnow() - self.last_email_time
-            if contamination_risk in ["High Risk", "Critical"]:
-                # Send immediately for critical
+                
+            time_diff = datetime.now(timezone.utc) - last_time
+            # Wait 2 hours to avoid spam, even for critical risks
+            if time_diff >= self.SENSOR_ALERT_COOLDOWN:
                 return True
-            else:
-                # Wait 2 hours for non-critical
-                return time_diff >= timedelta(hours=2)
+                
         return False
 
     def _send_alert_email(self, doc, target_email, sensor):
@@ -94,7 +114,7 @@ class AlertService:
         msg.attach(MIMEText(html_body, 'html'))
 
         try:
-            server = smtplib.SMTP(self.smtp_server, self.smtp_port)
+            server = smtplib.SMTP(self.smtp_server, self.smtp_port, timeout=10)
             server.starttls()
             server.login(self.email, self.password)
             text = msg.as_string()
@@ -264,6 +284,30 @@ class AlertService:
     """
     SENSOR ERROR ALERT
     """
+    def submit_sensor_error_alert(self, app, sensor_id: str, error_type: str = "ERROR") -> bool:
+        if not self.enabled:
+            return False
+
+        cache_key = self._sensor_alert_cache_key(sensor_id, error_type)
+        now = datetime.now(timezone.utc)
+
+        with self._sensor_alert_lock:
+            if cache_key in self._pending_sensor_alerts:
+                return False
+            last_sent = self.last_sensor_error_time.get(cache_key)
+            if last_sent and (now - last_sent) < self.SENSOR_ALERT_COOLDOWN:
+                return False
+            self._pending_sensor_alerts.add(cache_key)
+
+        self._sensor_alert_executor.submit(
+            self._run_sensor_error_alert_job,
+            app,
+            str(sensor_id),
+            error_type,
+            cache_key,
+        )
+        return True
+
     def send_sensor_error_alert(self, sensor_id: str, error_type: str = "ERROR") -> bool:
         """
         Send an alert email when a sensor error (all data is 0) or disconnection (offline) is detected.
@@ -275,16 +319,17 @@ class AlertService:
         Returns:
             bool: True if the email was sent successfully, otherwise False.
         """
+        if not self.enabled:
+            return False
+
         db = get_mongo_database()
         if db is None:
             print("MongoDB not connected. Cannot send sensor error email.")
             return False
             
-        # Avoid spam mail, send only 1 email per sensor per error type within 2 hours
-        cache_key = f"{str(sensor_id)}_{error_type}"
-        now = datetime.utcnow()
-        last_sent = self.last_sensor_error_time.get(cache_key)
-        if last_sent and (now - last_sent) < timedelta(hours=2):
+        cache_key = self._sensor_alert_cache_key(sensor_id, error_type)
+        now = datetime.now(timezone.utc)
+        if self._is_sensor_alert_rate_limited(cache_key, now=now):
             return False
 
         try:
@@ -296,9 +341,11 @@ class AlertService:
                 owner_id = sensor.get("userId")
                 o_id = ObjectId(owner_id) if isinstance(owner_id, str) and len(owner_id) == 24 else owner_id
                 user = db.get_collection("users").find_one({"_id": o_id})
-                
                 if user and "email" in user:
-                    target_email = user.get("email")
+                    if user.get("email_notifications_enabled", True):
+                        target_email = user.get("email")
+                    else:
+                        print(f"User {owner_id} disabled email notifications for sensor error.", flush=True)
             
             if not target_email:
                 print(f"No linked email found to notify sensor error (Sensor: {sensor_id}).", flush=True)
@@ -317,7 +364,7 @@ class AlertService:
 
             msg.attach(MIMEText(html_body, 'html'))
 
-            server = smtplib.SMTP(self.smtp_server, self.smtp_port)
+            server = smtplib.SMTP(self.smtp_server, self.smtp_port, timeout=10)
             server.starttls()
             server.login(self.email, self.password)
             text = msg.as_string()
@@ -325,13 +372,47 @@ class AlertService:
             server.quit()
             
             # Update last sent time for this sensor and error type
-            self.last_sensor_error_time[cache_key] = now
+            self._mark_sensor_alert_sent(cache_key, sent_at=now)
             print(f"Sent {error_type} alert email for sensor to {target_email}", flush=True)
             return True
 
         except Exception as e:
             print(f"Failed to send sensor alert email: {e}", flush=True)
             return False
+
+    def _run_sensor_error_alert_job(
+        self,
+        app,
+        sensor_id: str,
+        error_type: str,
+        cache_key: str,
+    ) -> None:
+        try:
+            with app.app_context():
+                self.send_sensor_error_alert(sensor_id, error_type)
+        except Exception as exc:
+            print(f"Failed to dispatch sensor alert task: {exc}", flush=True)
+        finally:
+            with self._sensor_alert_lock:
+                self._pending_sensor_alerts.discard(cache_key)
+
+    @staticmethod
+    def _sensor_alert_cache_key(sensor_id: str, error_type: str) -> str:
+        return f"{str(sensor_id)}_{error_type}"
+
+    def _is_sensor_alert_rate_limited(
+        self,
+        cache_key: str,
+        *,
+        now: datetime,
+    ) -> bool:
+        with self._sensor_alert_lock:
+            last_sent = self.last_sensor_error_time.get(cache_key)
+        return bool(last_sent and (now - last_sent) < self.SENSOR_ALERT_COOLDOWN)
+
+    def _mark_sensor_alert_sent(self, cache_key: str, *, sent_at: datetime) -> None:
+        with self._sensor_alert_lock:
+            self.last_sensor_error_time[cache_key] = sent_at
 
     def _generate_sensor_error_email_body(self, sensor_id, sensor, error_type):
         """Generate HTML body for hardware error or disconnection alert email."""

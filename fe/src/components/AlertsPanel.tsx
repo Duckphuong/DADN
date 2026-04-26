@@ -18,6 +18,22 @@ export function AlertsPanel() {
   const [isEmailEnabled, setIsEmailEnabled] = useState(false);
   const [isUpdatingMail, setIsUpdatingMail] = useState(false);
 
+  const fetchInitialData = async () => {
+  try {
+    setLoading(true);
+    const [alertsData, emailSettings] = await Promise.all([
+      alertService.getAlerts('unread'),
+      alertService.getEmailSetting()
+    ]);
+    setAlerts(alertsData);
+    setIsEmailEnabled(emailSettings.enabled);
+  } catch (error) {
+    console.error("Failed to fetch initial data:", error);
+  } finally {
+    setLoading(false);
+  }
+};
+
   const fetchAlerts = async () => {
     try {
       setLoading(true);
@@ -31,7 +47,7 @@ export function AlertsPanel() {
   };
 
   useEffect(() => {
-    fetchAlerts();
+    fetchInitialData();
     const minutes = 15;
     const interval = setInterval(fetchAlerts, minutes * 60 * 1000);
     return () => clearInterval(interval);
@@ -39,22 +55,18 @@ export function AlertsPanel() {
 
   // Hàm xử lý tắt/bật tự động gửi mail
   const handleToggleEmail = async () => {
-    try {
-      setIsUpdatingMail(true);
-      if (isEmailEnabled) {
-        await alertService.TurnOffMailAlert();
-        setIsEmailEnabled(false);
-      } else {
-        await alertService.TurnOnMailAlert();
-        setIsEmailEnabled(true);
-      }
-    } catch (error) {
-      console.error("Failed to update email settings:", error);
-      alert("Could not update email settings");
-    } finally {
-      setIsUpdatingMail(false);
-    }
-  };
+  try {
+    setIsUpdatingMail(true);
+    const nextStatus = !isEmailEnabled;
+    const response = await alertService.updateEmailSetting(nextStatus);
+    setIsEmailEnabled(response.enabled);
+    // toast.success(response.message); 
+  } catch (error) {
+    console.error("Failed to update email setting:", error);
+  } finally {
+    setIsUpdatingMail(false);
+  }
+};
 
   // Hàm đánh dấu đã đọc
   const handleMarkAsRead = async (id: string) => {
@@ -86,7 +98,7 @@ export function AlertsPanel() {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 h-fit">
+    <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 max-h-[550px]">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-gray-900 font-medium">System Alerts</h2>
         <div className="flex items-center gap-4">
@@ -122,7 +134,8 @@ export function AlertsPanel() {
         </div>
       </div>
 
-      <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
+      <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+      {/* <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar"> */}
         {loading ? (
           <div className="flex justify-center py-10">
             <Loader2 className="w-6 h-6 animate-spin text-gray-400" />

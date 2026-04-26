@@ -173,9 +173,10 @@ export function Admin() {
     }
   };
 
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const validateEmail = (email: string) => {
-    if (email && !email.endsWith("@gmail.com")) {
-      setEmailError("Please enter a valid @gmail.com address.");
+    if (email && !emailRegex.test(email)) {
+      setEmailError('Invalid email.');
       return false;
     }
     setEmailError("");
@@ -423,8 +424,8 @@ export function Admin() {
                   onChange={e => setFormData({...formData, role: e.target.value as User['role']})}
                 >
                   <option value="ADMIN">Admin</option>
-                  <option value="MANAGER">Manager</option>
-                  {/* <option value="Viewer">Viewer</option> */}
+                  {/* <option value="MANAGER">Manager</option> */}
+                  <option value="USER">User</option>
                 </select>
               </div>
               

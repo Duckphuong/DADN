@@ -9,6 +9,7 @@ import {
     AlertCircle,
     Eye,
     EyeOff,
+    XCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
@@ -18,9 +19,29 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  
+  const [showPass, setShowPass] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [isSendingReset, setIsSendingReset] = useState(false);
+
+  // State cho logic giới hạn gửi mail
+  const [resetCount, setResetCount] = useState(0); // Đếm số lần gửi
+  const [countdown, setCountdown] = useState(0); // Đếm ngược 60s
+  const [isLocked, setIsLocked] = useState(false); // Trạng thái khóa sau 5 lần
+
+  React.useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (countdown > 0) {
+      timer = setInterval(() => {
+        setCountdown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [countdown]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,8 +184,21 @@ export function LoginPage() {
               </label>
 
               <div className="login-input-wrapper relative">
+                <Lock
+                  size={18}
+                  style={{
+                    position: 'absolute',
+                    left: '15px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    zIndex: 30,
+                    pointerEvents: 'none'
+                  }}
+                  className={passwordError ? 'text-red-500' : ''}
+                />
+
                 <input
-                  type="password"
+                  type={showPass ? "text" : "password"}
                   required
                   value={password}
                   onChange={(e) => {
@@ -172,16 +206,29 @@ export function LoginPage() {
                     if (passwordError) setPasswordError('');
                   }}
                   placeholder="•••••"
-                  className={`login-input-field w-full outline-none transition-colors ${
+                  className={`login-input-field w-full py-2 pl-10 pr-10 outline-none transition-colors rounded-lg ${
                     passwordError
                       ? 'border-red-500 border-2 focus:border-red-500'
                       : 'border-gray-300 border-2 focus:border-cyan-500'
                   }`}
                 />
-                <Lock
-                  className={`absolute ${passwordError ? 'text-red-500' : ''}`}
-                  size={18}
-                />
+                
+                <button
+                  type="button"
+                  onClick={() => setShowPass(!showPass)}
+                  style={{
+                    position: 'absolute',
+                    right: '15px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    zIndex: 30,
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
 
@@ -209,20 +256,13 @@ export function LoginPage() {
                   Remember me
                 </span>
               </div>
-              <div
-                style={{ fontSize: '14px', fontWeight: '500' }}
+              <button
+                type="button" // Quan trọng: tránh submit form chính
+                onClick={() => setIsForgotModalOpen(true)}
+                className="text-cyan-600 hover:underline bg-transparent border-none p-0 cursor-pointer text-sm font-medium transition-all"
               >
-                <a
-                  href="#"
-                  style={{
-                    color: '#0092b8',
-                    textDecoration: 'none',
-                  }}
-                  className="hover:underline"
-                >
-                  Forgot password?
-                </a>
-              </div>
+                Forgot password?
+              </button>
             </div>
 
             {/* Submit Button */}
@@ -253,6 +293,112 @@ export function LoginPage() {
           </p>
         </div>
       </div>
+
+      {/* Modal Quên mật khẩu */}
+      {isForgotModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6">
+              <div className="relative mb-6 text-center">
+                {/* Khối văn bản căn giữa */}
+                <div className="px-8">
+                  <h3 className="text-xl font-bold text-gray-900">Reset Password</h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Enter your email and we'll send you a reset link.
+                  </p>
+                </div>
+
+                {/* Nút X đặt tuyệt đối ở góc phải */}
+                <button 
+                  onClick={() => setIsForgotModalOpen(false)}
+                  className="absolute right-0 top-0 text-gray-400 hover:text-red-500"
+                >
+                  <XCircle size={24} />
+                </button>
+              </div>
+
+              {/* Hiển thị thông báo nếu bị khóa quá 5 lần */}
+              {isLocked ? (
+                <div className="bg-red-50 border border-red-200 p-4 rounded-xl flex flex-col items-center gap-3 text-center">
+                  <AlertCircle className="text-red-500" size={32} />
+                  <p className="text-sm text-red-800 font-medium">
+                    Too many attempts. For security reasons, your password reset access is temporarily restricted.
+                  </p>
+                  <p className="text-xs text-red-600">
+                    Please contact <span className="font-bold underline">admin@gmail.com</span> for manual assistance.
+                  </p>
+                </div>
+              ) : (
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (resetCount >= 5) {
+                    setIsLocked(true);
+                    return;
+                  }
+                  if (countdown > 0) return;
+                  setIsSendingReset(true);
+                  setTimeout(() => {
+                    alert(`Reset link sent to: ${resetEmail}`);
+                    setIsSendingReset(false);
+                    setResetCount(prev => prev + 1); // Tăng số lần gửi
+                    setCountdown(60); // Bắt đầu đếm ngược 60s
+                    if (resetCount + 1 >= 5) {
+                      setIsLocked(true);
+                    }
+                  }, 1500);
+                }}>
+                  <div className="space-y-4">
+                    <div className="relative text-sm">
+                      <input
+                        type="email"
+                        required
+                        value={resetEmail}
+                        onChange={(e) => setResetEmail(e.target.value)}
+                        placeholder="example@gmail.com"
+                        disabled={countdown > 0} // Khóa input khi đang đếm ngược
+                        className="w-full px-9 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-cyan-500 outline-none transition-all disabled:opacity-50"
+                      />
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                    </div>
+                    
+                    <button
+                      type="submit"
+                      disabled={isSendingReset || countdown > 0}
+                      className="text-sm w-full bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-semibold py-3 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:from-gray-400 disabled:to-gray-500"
+                    >
+                      {isSendingReset ? (
+                        <Loader2 className="animate-spin" size={20} />
+                      ) : countdown > 0 ? (
+                        <span>Retry in {countdown}s</span>
+                      ) : (
+                        <>
+                          <span>Send Reset Link</span>
+                          <ArrowRight size={18} />
+                        </>
+                      )}
+                    </button>
+                    {resetCount > 0 && resetCount < 5 && (
+                      <p className="text-[11px] text-center text-gray-400">
+                        Attempts: {resetCount}/5
+                      </p>
+                    )}
+                  </div>
+                </form>
+              )}
+            </div>
+            
+            <div className="bg-gray-50 p-4 text-center border-t border-gray-100">
+              <button 
+                onClick={() => setIsForgotModalOpen(false)}
+                className="text-sm text-gray-600 hover:text-gray-900 font-medium"
+              >
+                Back to login
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

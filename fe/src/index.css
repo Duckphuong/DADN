@@ -2019,3 +2019,17 @@ html {
     opacity: .5;
   }
 }
+
+/* Tắt icon con mắt mặc định trên Edge */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+
+/* Một số trình duyệt khác như Chrome đôi khi cũng tự thêm nút xóa (clear) */
+input::-webkit-contacts-auto-fill-button,
+input::-webkit-credentials-auto-fill-button {
+  visibility: hidden;
+  display: none !important;
+  pointer-events: none;
+}

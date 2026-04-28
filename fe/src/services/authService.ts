@@ -61,6 +61,11 @@ export const authService = {
         }
     },
 
+    changePassword: async (data: { currentPassword: string; newPassword: string }) => {
+        const res = await api.patch('/auth/password', data);
+        return res.data;
+    },
+
     /**
      * Kiểm tra trạng thái đăng nhập dựa trên sự tồn tại của access_token
      */

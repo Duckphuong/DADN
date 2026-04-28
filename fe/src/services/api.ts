@@ -177,16 +177,28 @@ export const alertService = {
 		return res.data;
 	},
 
-	// BẬT chế độ tự động gửi mail cảnh báo 
-	TurnOnMailAlert: async () => {
-		const res = await api.get(`/api/v1/alerts/settings/email`);
-		return res.data;
-	},
+	// Lấy cấu hình nhận mail hiện tại
+	getEmailSetting: async () => {
+        const res = await api.get(`/api/v1/alerts/settings/email`);
+        return res.data; // Trả về { enabled: boolean }
+    },
 
-	// TẮT chế độ tự động gửi mail cảnh báo
-	TurnOffMailAlert: async () => {
-		const res = await api.put(`/api/v1/alerts/settings/email`);
-		return res.data;
-	},
+	// Cập nhật trạng thái nhận mail
+	updateEmailSetting: async (enabled: boolean) => {
+        const res = await api.put(`/api/v1/alerts/settings/email`, { enabled });
+        return res.data;
+    }
 
 };
+
+/**
+ * Analytics Services
+ */
+export const analyticsService = {
+  // Lấy dữ liệu xu hướng (pH, Temp, DO, Conductivity)
+  getTrends: async () => {
+    const res = await api.get('/api/analytics/trends');
+    return res.data;
+  }
+};
+

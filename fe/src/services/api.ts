@@ -195,9 +195,10 @@ export const alertService = {
  * Analytics Services
  */
 export const analyticsService = {
-  // Lấy dữ liệu xu hướng (pH, Temp, DO, Conductivity)
-  getTrends: async () => {
-    const res = await api.get('/api/analytics/trends');
+  getTrends: async (date?: string) => {
+    const res = await api.get('/api/analytics/trends', { 
+      params: { date }
+    });
     return res.data;
   }
 };

@@ -54,12 +54,14 @@ import { Loader2 } from 'lucide-react';
 export function TrendCharts() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  
+  const [selectedDate, setSelectedDate] = useState('');
 
   useEffect(() => {
     const fetchTrends = async () => {
       try {
         setLoading(true);
-        const trends = await analyticsService.getTrends();
+        const trends = await analyticsService.getTrends(selectedDate || undefined);
         setData(trends);
       } catch (error) {
         console.error("Failed to fetch analytics trends:", error);
@@ -69,7 +71,7 @@ export function TrendCharts() {
     };
 
     fetchTrends();
-  }, []);
+  }, [selectedDate]); // Re-fetch khi ngày thay đổi
 
   if (loading) {
     return (
@@ -81,17 +83,27 @@ export function TrendCharts() {
 
   if (!data) return null;
 
-  // Trích xuất dữ liệu từ API response
-  // Dựa trên serialize_analytics_trends trong backend
-  const phData = data.ph_trend || [];
-  const temperatureData = data.temperature_trend || [];
-  const conductivityData = data.conductivity_trend || [];
-  const doData = data.do_trend || [];
-  const turbidityData = data?.turbidity_comparison || [];
+  const phData = data.phTrend || [];
+  const temperatureData = data.temperatureTrend || [];
+  const conductivityData = data.conductivityTrend || [];
+  const doData = data.dissolvedOxygenTrend || [];
+  const turbidityData = data.turbidityComparison || [];
 
   return (
     <section>
-      <h2 className="text-cyan-900 mb-6">Trend Analysis</h2>
+      <div className="flex items-center gap-4 mb-6">
+        <h2 className="text-cyan-900 m-0 text-xl font-semibold">Trend Analysis</h2>
+        
+        <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl shadow-sm border border-gray-200">
+          <span className="text-xs text-gray-400 font-medium">Date:</span>
+          <input 
+            type="date" 
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="outline-none text-sm text-cyan-700 font-semibold cursor-pointer bg-transparent"
+          />
+        </div>
+      </div>
       
       <div className="grid md:grid-cols-1 lg:grid-cols-2 gap-6">
         {/* pH vs Time */}
@@ -184,7 +196,7 @@ export function TrendCharts() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="location" stroke="#6b7280" />
+              <XAxis dataKey="sensorName" stroke="#6b7280" />
               <YAxis stroke="#6b7280" />
               <Tooltip 
                 contentStyle={{ 

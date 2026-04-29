@@ -4,7 +4,7 @@ from pathlib import Path
 
 APP_DIR = Path(__file__).resolve().parent
 BASE_DIR = APP_DIR.parent
-ENV_FILE = APP_DIR / ".env"
+ENV_FILE = BASE_DIR / ".env"
 
 
 def _load_env_file(env_file: Path) -> None:

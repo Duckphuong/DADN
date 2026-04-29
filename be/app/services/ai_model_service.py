@@ -32,7 +32,7 @@ class AIModelService:
 		self.load_models()
 
 		if not self.models:
-			print("No models found → training...")
+			print("No models found - training...")
 			self.auto_train()
 			self.load_models()
 

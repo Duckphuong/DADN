@@ -51,9 +51,9 @@ def predict():
         status = sensor_health.check_and_update(sensor_id, data)
 
         if status == "ERROR":
-            return jsonify({
-                "error": "Invalid sensor data (all values = 0)"
-            }), 400
+            firmware_error = data.get("error")
+            error_msg = firmware_error if firmware_error else "Invalid sensor data (all values = 0)"
+            return jsonify({"error": error_msg}), 400
 
     result = ai_service.predict(data)
 
@@ -135,9 +135,9 @@ def _run_prediction_request(data: dict, *, created_at: datetime):
         status = sensor_health.check_and_update(sensor_id, data)
 
         if status == "ERROR":
-            return jsonify({
-                "error": "Invalid sensor data (all values = 0)"
-            }), 400
+            firmware_error = data.get("error")
+            error_msg = firmware_error if firmware_error else "Invalid sensor data (all values = 0)"
+            return jsonify({"error": error_msg}), 400
 
     result = ai_service.predict(data)
     _save_prediction(data, result, created_at=created_at)

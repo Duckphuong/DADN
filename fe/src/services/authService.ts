@@ -22,7 +22,8 @@ export const authService = {
             return null;
         } catch (error) {
             console.error("Login failed:", error);
-            return null;
+            throw error;
+            // return null;
         }
     },
 
@@ -40,7 +41,8 @@ export const authService = {
             return null;
         } catch (error) {
             console.error("Registration failed:", error);
-            return null;
+            throw error;
+            // return null;
         }
     },
 

@@ -15,9 +15,9 @@
 // CONFIGURATION
 // ============================================
 
-// Backend API endpoint (hardcoded - change in code before uploading)
-// To make this configurable, add WiFiManager custom parameter or Serial command interface
-const char* BACKEND_URL = "http://your-backend-ip:5000/prediction/predict";
+// Backend API endpoint (loaded from SPIFFS config, with fallback default)
+String backendURL = "http://192.168.135.169:5000/prediction/predict";  // Default fallback
+const char* CONFIG_FILE = "/backend_config.txt";
 
 // ============================================
 // CONSTANTS
@@ -44,8 +44,7 @@ const unsigned long HTTP_RETRY_DELAY = 1000;
 #define DEBUG_PRINT(x) Serial.print(x)
 #define DEBUG_PRINTLN(x) Serial.println(x)
 #else
-#define DEBUG_PRINT(x)
-#define DEBUG_PRINTLN(x)
+
 #endif
 
 // ============================================
@@ -387,6 +386,45 @@ bool initSPIFFS() {
   return true;
 }
 
+// Load backend URL from config file
+void loadBackendConfig() {
+  if (SPIFFS.exists(CONFIG_FILE)) {
+    File f = SPIFFS.open(CONFIG_FILE, "r");
+    if (f) {
+      String url = f.readStringUntil('\n');
+      url.trim();
+      if (url.length() > 0 && url.startsWith("http")) {
+        backendURL = url;
+        DEBUG_PRINT("Loaded backend URL from config: ");
+        DEBUG_PRINTLN(backendURL);
+      } else {
+        DEBUG_PRINTLN("Invalid URL in config file, using default");
+      }
+      f.close();
+    } else {
+      DEBUG_PRINTLN("Failed to open config file");
+    }
+  } else {
+    DEBUG_PRINTLN("Config file not found, using default URL");
+  }
+}
+
+// Save backend URL to config file
+bool saveBackendConfig(const String& url) {
+  File f = SPIFFS.open(CONFIG_FILE, "w");
+  if (f) {
+    f.println(url);
+    f.close();
+    backendURL = url;
+    DEBUG_PRINT("Saved backend URL: ");
+    DEBUG_PRINTLN(url);
+    return true;
+  } else {
+    DEBUG_PRINTLN("Failed to save config file");
+    return false;
+  }
+}
+
 // Save failed payload to queue file for later retry
 void enqueueFailedData(String& jsonString) {
   File f = SPIFFS.open("/dataqueue.txt", "a");
@@ -424,7 +462,7 @@ void retryQueuedData() {
   for (String& payload : queuedPayloads) {
       if (WiFi.status() == WL_CONNECTED) {
         HTTPClient http;
-        http.begin(BACKEND_URL);
+        http.begin(backendURL);
         http.addHeader("Content-Type", "application/json");
       
       int httpCode = http.POST(payload);
@@ -491,7 +529,7 @@ void sendSensorData() {
     
      while (!success && attempt < HTTP_MAX_RETRIES) {
        HTTPClient http;
-       http.begin(BACKEND_URL);
+       http.begin(backendURL);
        http.addHeader("Content-Type", "application/json");
 
       int httpCode = http.POST(jsonString);
@@ -559,6 +597,9 @@ void setup() {
   
   // Initialize SPIFFS for data queue
   initSPIFFS();
+  
+  // Load backend URL from config
+  loadBackendConfig();
   
   // Generate device ID from MAC address
   uint8_t mac[6];

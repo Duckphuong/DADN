@@ -1,0 +1,151 @@
+\section{FIRMWARE HỆ THỐNG}
+
+\subsection{Tổng quan}
+Firmware là lớp phần mềm nhúng chạy trên vi điều khiển ESP32, đóng vai trò cầu nối giữa môi trường đo thực tế và hệ thống phân tích dữ liệu ở backend. Nhiệm vụ chính của firmware là khởi tạo phần cứng, kết nối mạng, định kỳ đọc dữ liệu từ cảm biến, tiền xử lý dữ liệu thu được và gửi kết quả lên server để phục vụ lưu trữ, dự đoán và hiển thị. Trong phiên bản hiện tại, hệ thống chỉ sử dụng duy nhất một cảm biến vật lý là DS18B20 để đo nhiệt độ nước.
+
+Dù phần cứng được tối giản, firmware vẫn được xây dựng theo hướng mô-đun để thuận tiện cho việc mở rộng sau này. Luồng hoạt động tổng quát gồm: khởi động thiết bị, kết nối WiFi, đọc nhiệt độ từ DS18B20, tạo thêm các tham số mô phỏng từ giá trị nhiệt độ theo các công thức giả lập, sau đó đóng gói toàn bộ dữ liệu dưới dạng JSON và gửi đến backend Flask qua giao thức HTTP. Cách tổ chức này giúp hệ thống phù hợp với phạm vi thử nghiệm nhưng vẫn giữ được cấu trúc xử lý dữ liệu hoàn chỉnh cho pipeline AI.
+
+Ngoài chức năng đo và truyền dữ liệu, firmware còn chịu trách nhiệm kiểm tra trạng thái cảm biến, xử lý các tình huống mất kết nối mạng, lặp chu kỳ lấy mẫu theo thời gian cấu hình sẵn và đảm bảo dữ liệu đầu ra luôn thống nhất về định dạng. Nhờ đó, firmware đóng vai trò như một tầng điều phối tại thiết bị biên, giúp backend nhận dữ liệu ổn định và sẵn sàng cho các bước phân tích tiếp theo.
+
+\subsection{Phần cứng}
+\begin{itemize}
+    \item \textbf{Bo mạch trung tâm}: ESP32S3 (ESP32S3 DevKit V1)
+    \item \textbf{Cảm biến vật lý (1)}:
+    \begin{itemize}
+        \item Nhiệt độ: DS18B20 (giao tiếp 1-Wire, chân GPIO 4)
+    \end{itemize}
+\end{itemize}
+
+\subsection{Kiến trúc Phần mềm}
+Firmware được viết bằng Arduino C++ dành cho ESP32, sử dụng các thư viện:
+\begin{itemize}
+    \item \texttt{WiFi.h} và \texttt{HTTPClient.h}: Kết nối WiFi và gửi HTTP POST
+    \item \texttt{WiFiManager.h}: Cấu hình WiFi tự động qua captive portal
+    \item \texttt{ArduinoJson}: Serialize dữ liệu thành JSON
+    \item \texttt{OneWire} và \texttt{DallasTemperature}: Đọc cảm biến nhiệt độ DS18B20
+    \item \texttt{NTPClient.h} và \texttt{WiFiUDP.h}: Đồng bộ thời gian qua NTP
+    \item \texttt{SPIFFS.h} và \texttt{FS.h}: Lưu trữ dữ liệu trên bộ nhớ flash
+    \item \texttt{vector} và \texttt{math.h}: Xử lý cấu trúc dữ liệu và tính toán toán học
+\end{itemize}
+
+\subsection{Thu thập Dữ liệu}
+\begin{itemize}
+    \item \textbf{Nguồn dữ liệu thực}: Hệ thống chỉ đọc trực tiếp nhiệt độ nước từ cảm biến DS18B20
+    \item \textbf{Cơ chế đọc}: DS18B20 giao tiếp theo chuẩn 1-Wire, cho phép lấy dữ liệu số trực tiếp mà không cần qua ADC
+    \item \textbf{Tần số lấy mẫu}: 60 giây/lần (có thể điều chỉnh qua \texttt{SAMPLING\_INTERVAL})
+    \item \textbf{Hiệu chuẩn}:
+    \begin{itemize}
+        \item Nhiệt độ: DS18B20 cung cấp trực tiếp giá trị theo đơn vị °C
+        \item Các tham số còn lại không được đo trực tiếp mà được mô phỏng từ nhiệt độ theo công thức giả lập
+    \end{itemize}
+\end{itemize}
+
+\subsection{Các Tham số Mô phỏng (Simulated)}
+Firmware thực hiện mô phỏng một hệ sinh thái nước hoàn chỉnh dựa trên giá trị nhiệt độ đo được. Các tham số không có cảm biến vật lý được tính toán theo mô hình sinh học và hóa học với các phụ thuộc lẫn nhau:
+
+\begin{itemize}
+    \item \textbf{Tốc độ phản ứng sinh hóa (Q10 Model)}: Tất cả các quá trình phụ thuộc vào nhiệt độ với hệ số Q10 ≈ 2.0, nghĩa là tốc độ phản ứng tăng gấp đôi khi nhiệt độ tăng 10°C.
+    
+    \item \textbf{Chu kỳ Nitơ (Nitrogen Cycle)}: Ammonia (NH3) được mô phỏng từ phân hủy hữu cơ, sau đó một phần được nitrite hóa thành Nitrite (NO2) qua các vi khuẩn nitrification với tốc độ phụ thuộc vào nhiệt độ.
+    
+    \item \textbf{Sản xuất ban đầu (Plankton/Algae)}: Sinh khối tảo phụ thuộc vào:
+    \begin{itemize}
+        \item Lượng dinh dưỡng có sẵn (Phosphorus, Ammonia)
+        \item Nhiệt độ (tối ưu 20-30°C)
+        \item Được mô phỏng thêm biến động ngẫu nhiên
+    \end{itemize}
+    
+    \item \textbf{Độ đục (Turbidity)}: Chủ yếu từ tảo lơ lửng và các hạt hữu cơ, tỷ lệ thuận với sinh khối plankton.
+    
+    \item \textbf{Chất hữu cơ (BOD)}: Từ quá trình phân hủy plankton chết và phế thải, tốc độ tăng với nhiệt độ do tăng tốc độ trao đổi chất.
+    
+    \item \textbf{Oxy hòa tan (Dissolved Oxygen - DO)}: Cân bằng giữa:
+    \begin{itemize}
+        \item Nồng độ bão hòa tính theo công thức Benson-Krause (phụ thuộc nhiệt độ)
+        \item Tiêu hao: Oxy bị tiêu thụ trong quá trình phân hủy hữu cơ (respiratation)
+        \item Sản sinh: Oxy từ quá trình quang hợp của plankton
+    \end{itemize}
+    
+    \item \textbf{CO2 và pH}: CO2 được tạo từ quá trình hô hấp và phân hủy, bị lấy đi bởi quang hợp. pH phụ thuộc vào cân bằng giữa:
+    \begin{itemize}
+        \item Buffering từ Alkalinity (tác dụng kiềm tính)
+        \item CO2 (tạo thành axit cacbonic, hạ pH)
+    \end{itemize}
+    
+    \item \textbf{Khoáng chất (Minerals)}:
+    \begin{itemize}
+        \item Alkalinity: Độ đệm của nước, biến động nhẹ theo nhiệt độ
+        \item Hardness: Tương quan với Alkalinity (độ cứng cacbonat)
+        \item Calcium: Chiếm khoảng 40\% của Hardness
+    \end{itemize}
+    
+    \item \textbf{Phosphorus}: Từ chất thải/rác rưởi, biến động ngẫu nhiên với xu hướng tăng nhẹ theo nhiệt độ.
+    
+    \item \textbf{H2S (Hydrogen Sulfide)}: Được sản sinh bởi các vi khuẩn yếu khí khi Oxy hòa tan quá thấp (DO < 2 mg/L), báo hiệu điều kiện thiếu oxy.
+\end{itemize}
+
+\subsection{Giao tiếp Mạng}
+\begin{itemize}
+    \item \textbf{Kết nối WiFi}: Sử dụng WiFiManager để tự động cấu hình qua captive portal. Khi không có tài khoản đã lưu, thiết bị sẽ tạo access point ``WaterSensor\_Config'' cho phép người dùng nhập thông tin WiFi. Nếu kết nối thất bại, firmware sẽ tự động khởi động lại thiết bị.
+    
+    \item \textbf{Đồng bộ Thời gian}: Khi WiFi kết nối, NTP Client sẽ đồng bộ thời gian từ server NTP (pool.ntp.org), cho phép dữ liệu có timestamp chính xác. Khi mất WiFi, timestamp sẽ sử dụng uptime của thiết bị.
+    
+    \item \textbf{Device ID}: Được sinh tự động từ địa chỉ MAC của ESP32, định dạng ``XX:XX:XX:XX:XX:XX'', cho phép phân biệt các thiết bị trong hệ thống.
+    
+    \item \textbf{HTTP POST}: Gửi dữ liệu JSON đến backend với retry logic tự động. Nếu WiFi không kết nối hoặc server không phản hồi, dữ liệu sẽ được lưu vào SPIFFS để gửi lại sau.
+    
+    \item \textbf{Exponential Backoff Retry}: Khi gửi dữ liệu thất bại, firmware sẽ thử lại tối đa 3 lần với độ trễ exponential (1s, 2s, 4s). Nếu vẫn thất bại, dữ liệu sẽ được enqueue.
+    
+    \item \textbf{Endpoint}: \texttt{http://backend-ip:5000/prediction/predict}
+    
+    \item \textbf{Định dạng JSON}: Gồm các trường: device\_id, timestamp, Temp (nhiệt độ đo thực), Turbidity (độ đục), DO (Oxy hòa tan), BOD, CO2, pH, Alkalinity, Hardness, Calcium, Ammonia, Nitrite, Phosphorus, H2S, Plankton.
+    
+    \item \textbf{Lưu trữ Cục bộ (SPIFFS)}: Khi mất kết nối WiFi, dữ liệu sẽ được lưu vào tệp queue trong bộ nhớ flash. Khi WiFi phục hồi, firmware sẽ tự động gửi lại toàn bộ dữ liệu trong queue trước khi gửi dữ liệu mới.
+    
+    \item \textbf{Reconnect Logic}: Firmware kiểm tra trạng thái WiFi liên tục. Khi mất kết nối, nó sẽ cố gắng kết nối lại với delay tăng dần (5 giây giữa các lần thử).
+    
+    \item \textbf{Phản hồi}: Backend trả về kết quả dự đoán chất lượng nước, lỗi (nếu có), hoặc mã HTTP lỗi. Mã 400-499 là lỗi client (sai định dạng JSON), không retry. Mã 500+ là lỗi server, firmware sẽ queue dữ liệu.
+\end{itemize}
+
+\subsection{Cài đặt và Biên dịch}
+Project sử dụng PlatformIO với file cấu hình \texttt{platformio.ini}:
+\begin{itemize}
+    \item Platform: ESP32 (espressif32)
+    \item Framework: Arduino
+    \item Thư viện dependencies: ArduinoJson, OneWire, DallasTemperature, WiFiManager, Time (cho NTPClient)
+    \item Lệnh build: \texttt{pio run}
+    \item Lệnh upload: \texttt{pio run -t upload}
+    \item Lệnh monitor: \texttt{pio run -t monitor} (115200 baud)
+\end{itemize}
+
+\subsection{Hiệu chuẩn và Tùy chỉnh}
+Các hàm mô phỏng được tập trung trong hàm \texttt{simulateWaterQualityEcosystem()} với các tham số có thể điều chỉnh:
+\begin{itemize}
+    \item \textbf{SAMPLING\_INTERVAL}: Khoảng thời gian lấy mẫu (mặc định 60000 ms = 60 giây)
+    \item \textbf{BACKEND\_URL}: Đường dẫn endpoint backend (cần thay đổi trước khi upload)
+    \item \textbf{Q10 Factor}: Hệ số tốc độ phản ứng theo nhiệt độ (hiện tại = 2.0)
+    \item \textbf{Hệ số mô phỏng}: Các hệ số tương quan (nitrification rate, plankton growth factor, DO saturation constants, v.v.) có thể điều chỉnh dựa trên dữ liệu thực tế
+    \item \textbf{Giới hạn nồng độ}: Các hàm \texttt{constrain()} định nghĩa phạm vi hợp lệ cho mỗi tham số (ví dụ: Turbidity 0-100, DO 0-14)
+\end{itemize}
+
+\subsection{Ứng dụng và Mở rộng}
+\subsubsection{Tính năng đã cài đặt}
+\begin{itemize}
+    \item Lưu trữ cục bộ (SPIFFS) khi mất WiFi - dữ liệu được queue tự động
+    \item Cấu hình WiFi qua captive portal (WiFiManager)
+    \item Đồng bộ thời gian qua NTP
+\end{itemize}
+
+\subsubsection{Các mở rộng có thể thêm}
+Firmware có thể mở rộng với:
+\begin{itemize}
+    \item Giao thức MQTT thay vì HTTP
+    \item Màn hình hiển thị OLED để theo dõi trạng thái thực thời
+    \item Cảnh báo LED/buzzer khi chất lượng nước vượt ngưỡng
+    \item Chế độ tiết kiệm pin (deep sleep) cho các thiết bị chạy pin
+    \item Sensor thêm: pH electrode, DO probe, turbidity sensor thực
+    \item Ghi log chi tiết vào SD card
+    \item Dashboard cấu hình qua web interface
+\end{itemize}
+
+\end{document}

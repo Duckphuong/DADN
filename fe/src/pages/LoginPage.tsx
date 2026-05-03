@@ -73,18 +73,16 @@ export function LoginPage() {
     try {
       const role = await authService.login(email, password);
 
-      if (role === 'ADMIN') {
-        navigate('/admin');
-      } else if (role === 'USER') {
-        navigate('/');
-      } else if (role === 'MANAGER') {
-        navigate('/')
+      if (role === 'ADMIN' || role === 'USER' || role === 'MANAGER') {
+        if (role === 'ADMIN') navigate('/admin');
+        else navigate('/');
+      } else {
+        // Trường hợp server không trả về role hợp lệ (sai mật khẩu/user)
+        setPasswordError('Invalid email or password.'); 
       }
-      else {
-        setPasswordError('Wrong password');
-      }
-    } catch (err) {
-      setError('Something went wrong. Please try again later.');
+    } catch (err: any) {
+      setPasswordError('Incorrect email or password.');
+      setError('Login failed. Please check your credentials.');
     } finally {
       setIsLoading(false);
     }

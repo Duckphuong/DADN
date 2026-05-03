@@ -18,7 +18,10 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    CORS(app)  # Enable CORS for all routes
+    # CORS(app)  # Enable CORS for all routes
+    CORS(app, resources={r"/*": {"origins": "*"}}, 
+    allow_headers=["Content-Type", "Authorization"],
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
 
     init_mongo(app)
     app.extensions[CONTAINER_EXTENSION_KEY] = build_container(app.config)
@@ -69,7 +72,7 @@ def create_app():
     scheduler.add_job(
         func=sensor_health_task,
         trigger="interval",
-        minutes=10,
+        minutes=60*24,
         id="sensor_health_check",
         replace_existing=True,
     )

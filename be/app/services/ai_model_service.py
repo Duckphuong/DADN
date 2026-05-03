@@ -12,13 +12,16 @@ from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
+from app.infrastructure.external.weather_service import get_weather_data
+from app.services.solution_ai_service import SolutionAIService
+
 
 FEATURE_COLUMNS = [
 	"Temp", "Turbidity", "DO", "BOD", "CO2",
 	"pH", "Alkalinity", "Hardness", "Calcium",
 	"Ammonia", "Nitrite", "Phosphorus", "H2S", "Plankton",
 ]
-
+solution_service = SolutionAIService()
 
 class AIModelService:
 	def __init__(self):
@@ -32,7 +35,7 @@ class AIModelService:
 		self.load_models()
 
 		if not self.models:
-			print("No models found → training...")
+			print("No models found - training...")
 			self.auto_train()
 			self.load_models()
 
@@ -130,7 +133,8 @@ class AIModelService:
 			if good_indices:
 				# 3. Lấy xác suất dự đoán (Dùng X_scaled hoặc X tùy vào cấu hình model)
 				if metadata[best_model_name]["use_scaler"]:
-					probs = best_model.predict_proba(X_scaled)
+					X_full_scaled = scaler.transform(X)
+					probs = best_model.predict_proba(X_full_scaled)
 				else:
 					probs = best_model.predict_proba(X)
 				
@@ -293,6 +297,28 @@ class AIModelService:
 
 		trend = "Stable" if delta <= 3.0 else "Unstable"
 
+		# ===========================================================
+        # [TÍCH HỢP SOLUTION (GROQ) & WEATHER]
+        # ===========================================================
+		try:
+			weather_info = get_weather_data(10.8231, 106.6297)
+			temp_result = {
+				"summary": {
+					"wqi": best["wqi"],
+					"forecast_24h": best["forecast_24h"]
+				}
+			}
+			
+			final_solution = solution_service.generate_advanced_solution(
+				sensor_data=data,
+				ai_prediction_result=temp_result,
+				weather_data=weather_info
+			)
+		except Exception as e:
+			print(f"Lỗi khi gọi Groq/Weather trong ai_model_service: {e}")
+			final_solution = self.solution_for(best["wqi"]["label"])
+			weather_info = None
+
 		return {
 			"best_model": best["model"],
 			"models": results,
@@ -319,15 +345,16 @@ class AIModelService:
 				"accuracy": best["accuracy"],
 				"forecast_24h": best["forecast_24h"],
 				"confidence": best["confidence"],
-				"solution": self.solution_for(label),
+				"solution": final_solution,
+				"weather": weather_info
 			}
 		}
 
 	# ================= HELPER =================
 	def getWqiLabel(self, score):
-		if score >= 90:
+		if score >= 80:
 			return "Excellent"
-		if score >= 70:
+		if score >= 40:
 			return "Good"
 		return "Poor"
 

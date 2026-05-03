@@ -4,7 +4,7 @@ from pathlib import Path
 
 APP_DIR = Path(__file__).resolve().parent
 BASE_DIR = APP_DIR.parent
-ENV_FILE = APP_DIR / ".env"
+ENV_FILE = BASE_DIR / ".env"
 
 
 def _load_env_file(env_file: Path) -> None:
@@ -60,5 +60,5 @@ class Config:
     MONGO_CONNECT_TIMEOUT_MS = int(os.getenv("MONGO_CONNECT_TIMEOUT_MS", "5000"))
     MONGO_FAIL_FAST = _get_bool_env("MONGO_FAIL_FAST", False)
 
-    # --- BỔ SUNG CẤU HÌNH GEMINI ---
-    GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
+    # --- BỔ SUNG CẤU HÌNH GROQ ---
+    GROQ_API_KEY = os.environ.get('GROQ_API_KEY')

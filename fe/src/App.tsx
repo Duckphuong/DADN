@@ -7,15 +7,19 @@ import {
     Route,
     Navigate,
 } from 'react-router-dom';
-import { Admin } from './pages/AdminPage';  
+import { Admin } from './pages/AdminPage';
 import { Dashboard } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
+import PredictPage from './pages/PredictPage';
+import PredictHistoryPage from './pages/PredictHistoryPage';
 
 // check authorize
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
     const isAuthenticated = document.cookie.includes('access_token');
-    const isUser = document.cookie.includes('user_role=USER') || document.cookie.includes('user_role=MANAGER');
-    
+    const isUser =
+        document.cookie.includes('user_role=USER') ||
+        document.cookie.includes('user_role=MANAGER');
+
     if (!isAuthenticated) return <Navigate to="/login" replace />;
     if (!isUser) return <Navigate to="/login" replace />;
 
@@ -26,10 +30,10 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
 const AdminProtectedRoute = ({ children }: { children: JSX.Element }) => {
     const isAuthenticated = document.cookie.includes('access_token');
     const isAdmin = document.cookie.includes('user_role=ADMIN');
-    
+
     if (!isAuthenticated) return <Navigate to="/login" replace />;
     if (!isAdmin) return <Navigate to="/login" replace />;
-    
+
     return children;
 };
 
@@ -50,15 +54,40 @@ export default function App() {
                     }
                 />
 
+                {/* Standalone Predict page */}
+                <Route
+                    path="/predict"
+                    element={
+                        <ProtectedRoute>
+                            <PredictPage />
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* Predict History page */}
+                <Route
+                    path="/predict-history"
+                    element={
+                        <ProtectedRoute>
+                            <PredictHistoryPage />
+                        </ProtectedRoute>
+                    }
+                />
+
                 {/* Route for Admin */}
-                <Route path="/admin" element={
-                    <AdminProtectedRoute>
-                        <Admin />
-                    </AdminProtectedRoute>} />
+                <Route
+                    path="/admin"
+                    element={
+                        <AdminProtectedRoute>
+                            <Admin />
+                        </AdminProtectedRoute>
+                    }
+                />
 
                 {/* Chuyển hướng các đường dẫn lạ về trang chính */}
-                <Route path="*" 
-                    // element={<Navigate to="/" />} 
+                <Route
+                    path="*"
+                    // element={<Navigate to="/" />}
                     element={
                         <ProtectedRoute>
                             <Dashboard />

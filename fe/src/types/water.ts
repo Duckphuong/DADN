@@ -1,18 +1,17 @@
 export interface SensorData {
-    Temp: number;
-    Turbidity: number;
-    DO: number;
-    BOD: number;
-    CO2: number;
+    "Nhiệt độ": number;
     pH: number;
-    Alkalinity: number;
-    Hardness: number;
-    Calcium: number;
-    Ammonia: number;
-    Nitrite: number;
-    Phosphorus: number;
+    DO: number;
+    "Độ dẫn": number;
+    "Độ kiềm": number;
+    "N-NO2": number;
+    "N-NH4": number;
+    "P-PO4": number;
     H2S: number;
-    Plankton: number;
+    TSS: number;
+    COD: number;
+    "Aeromonas tổng số": number;
+    Coliform: number;
 }
 
 export interface PredictionRisk {
@@ -42,19 +41,18 @@ export interface Prediction {
 export interface HistoryData {
     id: string;
     created_at?: string;
-    Temp?: number;
-    Turbidity?: number;
+    "Nhiệt độ"?: number;
     DO?: number;
-    BOD?: number;
-    CO2?: number;
     pH?: number;
-    Alkalinity?: number;
-    Hardness?: number;
-    Calcium?: number;
-    Ammonia?: number;
-    Nitrite?: number;
-    Phosphorus?: number;
+    "Độ dẫn"?: number;
+    "Độ kiềm"?: number;
+    "N-NO2"?: number;
+    "N-NH4"?: number;
+    "P-PO4"?: number;
     H2S?: number;
-    Plankton?: number;
+    TSS?: number;
+    COD?: number;
+    "Aeromonas tổng số"?: number;
+    Coliform?: number;
     prediction?: Prediction;
 }

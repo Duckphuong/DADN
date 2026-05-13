@@ -9,9 +9,9 @@ from app.infrastructure.persistence.mongo.object_id import parse_object_id
 OFFLINE_THRESHOLD_MINUTES = 60 * 24
 
 SENSOR_FIELDS = [
-    "Temp", "Turbidity", "DO", "BOD", "CO2", "pH",
-    "Alkalinity", "Hardness", "Calcium", "Ammonia",
-    "Nitrite", "Phosphorus", "H2S", "Plankton",
+    "Nhiệt độ", "pH", "DO", "Độ dẫn", "Độ kiềm",
+    "N-NO2", "N-NH4", "P-PO4", "H2S", "TSS",
+    "COD", "Aeromonas tổng số", "Coliform",
 ]
 
 STATUS_ONLINE = "ONLINE"

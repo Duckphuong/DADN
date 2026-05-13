@@ -1,5 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
+import {
+    LineChart,
+    Line,
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+    Area,
+    AreaChart,
+} from 'recharts';
 import { analyticsService } from '../services/api';
 import { Loader2 } from 'lucide-react';
 
@@ -52,190 +64,314 @@ import { Loader2 } from 'lucide-react';
 // ];
 
 export function TrendCharts() {
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  
-  const [selectedDate, setSelectedDate] = useState('');
+    const [data, setData] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const today = new Date().toISOString().split('T')[0]; // Lấy ngày hiện tại theo định dạng YYYY-MM-DD
+    const [selectedDate, setSelectedDate] = useState(today);
 
-  useEffect(() => {
-    const fetchTrends = async () => {
-      try {
-        setLoading(true);
-        const trends = await analyticsService.getTrends(selectedDate || undefined);
-        setData(trends);
-      } catch (error) {
-        console.error("Failed to fetch analytics trends:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    useEffect(() => {
+        const fetchTrends = async () => {
+            try {
+                setLoading(true);
+                const trends = await analyticsService.getTrends(
+                    selectedDate || undefined,
+                );
+                setData(trends);
+            } catch (error) {
+                console.error('Failed to fetch analytics trends:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-    fetchTrends();
-  }, [selectedDate]); // Re-fetch khi ngày thay đổi
+        fetchTrends();
+    }, [selectedDate]); // Re-fetch khi ngày thay đổi
 
-  if (loading) {
+    if (loading) {
+        return (
+            <div className="lg:col-span-3 flex justify-center py-20">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+            </div>
+        );
+    }
+
+    if (!data) return null;
+
+    const phData = data.phTrend || [];
+    const temperatureData = data.temperatureTrend || [];
+    const conductivityData = data.conductivityTrend || [];
+    const doData = data.dissolvedOxygenTrend || [];
+    const turbidityData = data.turbidityComparison || [];
+
     return (
-      <div className="lg:col-span-3 flex justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-      </div>
+        <section>
+            <div className="flex items-center gap-4 mb-6">
+                <h2 className="text-cyan-900 m-0 text-xl font-semibold">
+                    Trend Analysis
+                </h2>
+
+                <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl shadow-sm border border-gray-200">
+                    <span className="text-xs text-gray-400 font-medium">
+                        Date:
+                    </span>
+                    <input
+                        type="date"
+                        value={selectedDate}
+                        onChange={(e) => setSelectedDate(e.target.value)}
+                        className="outline-none text-sm text-cyan-700 font-semibold cursor-pointer bg-transparent"
+                    />
+                </div>
+            </div>
+
+            <div className="grid md:grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* pH vs Time */}
+                <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                    <h3 className="text-gray-900 mb-4">pH vs Time</h3>
+                    <ResponsiveContainer width="100%" height={250}>
+                        <LineChart data={phData}>
+                            <defs>
+                                <linearGradient
+                                    id="colorPh"
+                                    x1="0"
+                                    y1="0"
+                                    x2="0"
+                                    y2="1"
+                                >
+                                    <stop
+                                        offset="5%"
+                                        stopColor="#3b82f6"
+                                        stopOpacity={0.3}
+                                    />
+                                    <stop
+                                        offset="95%"
+                                        stopColor="#3b82f6"
+                                        stopOpacity={0}
+                                    />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid
+                                strokeDasharray="3 3"
+                                stroke="#e5e7eb"
+                            />
+                            <XAxis dataKey="time" stroke="#6b7280" />
+                            <YAxis domain={[6.5, 7.5]} stroke="#6b7280" />
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: 'white',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '8px',
+                                }}
+                            />
+                            <Line
+                                type="monotone"
+                                dataKey="value"
+                                stroke="#3b82f6"
+                                strokeWidth={2}
+                                dot={{ r: 4 }}
+                                activeDot={{ r: 6 }}
+                            />
+                        </LineChart>
+                    </ResponsiveContainer>
+                </div>
+
+                {/* Temperature Trend */}
+                <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                    <h3 className="text-gray-900 mb-4">Temperature Trend</h3>
+                    <ResponsiveContainer width="100%" height={250}>
+                        <LineChart data={temperatureData}>
+                            <defs>
+                                <linearGradient
+                                    id="colorTemp"
+                                    x1="0"
+                                    y1="0"
+                                    x2="0"
+                                    y2="1"
+                                >
+                                    <stop
+                                        offset="5%"
+                                        stopColor="#f59e0b"
+                                        stopOpacity={0.4}
+                                    />
+                                    <stop
+                                        offset="95%"
+                                        stopColor="#f59e0b"
+                                        stopOpacity={0}
+                                    />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid
+                                strokeDasharray="3 3"
+                                stroke="#e5e7eb"
+                            />
+                            <XAxis dataKey="time" stroke="#6b7280" />
+                            <YAxis domain={[20, 26]} stroke="#6b7280" />
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: 'white',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '8px',
+                                }}
+                            />
+                            <Line
+                                type="monotone"
+                                dataKey="value"
+                                stroke="#f59e0b"
+                                strokeWidth={2}
+                                dot={{ r: 4 }}
+                                activeDot={{ r: 6 }}
+                            />
+                        </LineChart>
+                    </ResponsiveContainer>
+                </div>
+
+                {/* Conductivity Trend */}
+                <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                    <h3 className="text-gray-900 mb-4">Conductivity Trend</h3>
+                    <ResponsiveContainer width="100%" height={250}>
+                        <AreaChart data={conductivityData}>
+                            <defs>
+                                <linearGradient
+                                    id="colorCond"
+                                    x1="0"
+                                    y1="0"
+                                    x2="0"
+                                    y2="1"
+                                >
+                                    <stop
+                                        offset="5%"
+                                        stopColor="#eab308"
+                                        stopOpacity={0.3}
+                                    />
+                                    <stop
+                                        offset="95%"
+                                        stopColor="#eab308"
+                                        stopOpacity={0}
+                                    />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid
+                                strokeDasharray="3 3"
+                                stroke="#e5e7eb"
+                            />
+                            <XAxis dataKey="time" stroke="#6b7280" />
+                            <YAxis domain={[430, 460]} stroke="#6b7280" />
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: 'white',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '8px',
+                                }}
+                            />
+                            <Area
+                                type="monotone"
+                                dataKey="value"
+                                stroke="#eab308"
+                                fill="url(#colorCond)"
+                                strokeWidth={2}
+                            />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                </div>
+
+                {/* Turbidity Comparison */}
+                <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+                    <h3 className="text-gray-900 mb-4">Turbidity Comparison</h3>
+                    <ResponsiveContainer width="100%" height={250}>
+                        <BarChart data={turbidityData}>
+                            <defs>
+                                <linearGradient
+                                    id="colorBar"
+                                    x1="0"
+                                    y1="0"
+                                    x2="0"
+                                    y2="1"
+                                >
+                                    <stop
+                                        offset="5%"
+                                        stopColor="#06b6d4"
+                                        stopOpacity={0.8}
+                                    />
+                                    <stop
+                                        offset="95%"
+                                        stopColor="#3b82f6"
+                                        stopOpacity={0.8}
+                                    />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid
+                                strokeDasharray="3 3"
+                                stroke="#e5e7eb"
+                            />
+                            <XAxis dataKey="sensorName" stroke="#6b7280" />
+                            <YAxis stroke="#6b7280" />
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: 'white',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '8px',
+                                }}
+                            />
+                            <Bar
+                                dataKey="value"
+                                fill="url(#colorBar)"
+                                radius={[8, 8, 0, 0]}
+                            />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+
+                {/* Dissolved Oxygen Variation - Full Width */}
+                <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 lg:col-span-2">
+                    <h3 className="text-gray-900 mb-4">
+                        Dissolved Oxygen Variation
+                    </h3>
+                    <ResponsiveContainer width="100%" height={250}>
+                        <LineChart data={doData}>
+                            <defs>
+                                <linearGradient
+                                    id="colorDO"
+                                    x1="0"
+                                    y1="0"
+                                    x2="0"
+                                    y2="1"
+                                >
+                                    <stop
+                                        offset="5%"
+                                        stopColor="#06b6d4"
+                                        stopOpacity={0.4}
+                                    />
+                                    <stop
+                                        offset="95%"
+                                        stopColor="#06b6d4"
+                                        stopOpacity={0}
+                                    />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid
+                                strokeDasharray="3 3"
+                                stroke="#e5e7eb"
+                            />
+                            <XAxis dataKey="time" stroke="#6b7280" />
+                            <YAxis domain={[7, 8.5]} stroke="#6b7280" />
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: 'white',
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: '8px',
+                                }}
+                            />
+                            <Line
+                                type="monotone"
+                                dataKey="value"
+                                stroke="#06b6d4"
+                                strokeWidth={2}
+                                dot={{ r: 4 }}
+                                activeDot={{ r: 6 }}
+                            />
+                        </LineChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
+        </section>
     );
-  }
-
-  if (!data) return null;
-
-  const phData = data.phTrend || [];
-  const temperatureData = data.temperatureTrend || [];
-  const conductivityData = data.conductivityTrend || [];
-  const doData = data.dissolvedOxygenTrend || [];
-  const turbidityData = data.turbidityComparison || [];
-
-  return (
-    <section>
-      <div className="flex items-center gap-4 mb-6">
-        <h2 className="text-cyan-900 m-0 text-xl font-semibold">Trend Analysis</h2>
-        
-        <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl shadow-sm border border-gray-200">
-          <span className="text-xs text-gray-400 font-medium">Date:</span>
-          <input 
-            type="date" 
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="outline-none text-sm text-cyan-700 font-semibold cursor-pointer bg-transparent"
-          />
-        </div>
-      </div>
-      
-      <div className="grid md:grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* pH vs Time */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-          <h3 className="text-gray-900 mb-4">pH vs Time</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={phData}>
-              <defs>
-                <linearGradient id="colorPh" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="time" stroke="#6b7280" />
-              <YAxis domain={[6.5, 7.5]} stroke="#6b7280" />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: 'white', 
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px'
-                }}
-              />
-              <Line type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Temperature Trend */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-          <h3 className="text-gray-900 mb-4">Temperature Trend</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={temperatureData}>
-              <defs>
-                <linearGradient id="colorTemp" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4}/>
-                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="time" stroke="#6b7280" />
-              <YAxis domain={[20, 26]} stroke="#6b7280" />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: 'white', 
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px'
-                }}
-              />
-              <Line type="monotone" dataKey="value" stroke="#f59e0b" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Conductivity Trend */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-          <h3 className="text-gray-900 mb-4">Conductivity Trend</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <AreaChart data={conductivityData}>
-              <defs>
-                <linearGradient id="colorCond" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#eab308" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#eab308" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="time" stroke="#6b7280" />
-              <YAxis domain={[430, 460]} stroke="#6b7280" />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: 'white', 
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px'
-                }}
-              />
-              <Area type="monotone" dataKey="value" stroke="#eab308" fill="url(#colorCond)" strokeWidth={2} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Turbidity Comparison */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-          <h3 className="text-gray-900 mb-4">Turbidity Comparison</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={turbidityData}>
-              <defs>
-                <linearGradient id="colorBar" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="sensorName" stroke="#6b7280" />
-              <YAxis stroke="#6b7280" />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: 'white', 
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px'
-                }}
-              />
-              <Bar dataKey="value" fill="url(#colorBar)" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Dissolved Oxygen Variation - Full Width */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100 lg:col-span-2">
-          <h3 className="text-gray-900 mb-4">Dissolved Oxygen Variation</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={doData}>
-              <defs>
-                <linearGradient id="colorDO" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.4}/>
-                  <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="time" stroke="#6b7280" />
-              <YAxis domain={[7, 8.5]} stroke="#6b7280" />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: 'white', 
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px'
-                }}
-              />
-              <Line type="monotone" dataKey="value" stroke="#06b6d4" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-    </section>
-  );
 }

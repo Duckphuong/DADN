@@ -46,11 +46,11 @@ class MongoAnalyticsRepository(AnalyticsRepository):
                 "$project": {
                     "bucket": self._bucket_switch_expression(timezone_name),
                     "ph": self._measurement_field_expression("pH"),
-                    "temperature": self._measurement_field_expression("Temp"),
+                    "temperature": self._measurement_field_expression("Nhiệt độ"),
                     # TODO: Confirm the persisted conductivity field name with the
                     # device payload/schema. No fallback is used to avoid inventing a
                     # business rule outside the dashboard requirement.
-                    "conductivity": self._measurement_field_expression("Conductivity"),
+                    "conductivity": self._measurement_field_expression("Độ dẫn"),
                     "dissolvedOxygen": self._measurement_field_expression("DO"),
                 }
             },
@@ -112,7 +112,7 @@ class MongoAnalyticsRepository(AnalyticsRepository):
             {
                 "$project": {
                     "sensorId": {"$toString": "$idSensor"},
-                    "turbidity": self._measurement_field_expression("Turbidity"),
+                    "turbidity": self._measurement_field_expression("TSS"),
                 }
             },
             {
@@ -218,12 +218,8 @@ class MongoAnalyticsRepository(AnalyticsRepository):
 
     @staticmethod
     def _measurement_field_expression(field_name: str) -> dict:
-        return {
-            "$ifNull": [
-                f"${field_name}",
-                f"$sensor_data.{field_name}",
-            ]
-        }
+        # Fields are stored at top-level in the predictions collection
+        return f"${field_name}"
 
     def _get_sensor_collection(self):
         database = self._get_database()

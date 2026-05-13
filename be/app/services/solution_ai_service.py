@@ -8,11 +8,16 @@ class SolutionAIService:
         self.client = Groq(api_key=Config.GROQ_API_KEY)
         
         self.model_name = "llama-3.3-70b-versatile" 
-        self.profile_path = 'app/modelsAI/good_water_profile.json'
+        root_dir = os.getcwd()
+        self.profile_path = os.path.join(root_dir, 'modelsAI', 'good_water_profile.json')
 
     def _find_lagging_parameters(self, current_sensor_data: dict) -> tuple[list, bool]:
         lagging_issues = []
         try:
+            if not os.path.exists(self.profile_path):
+                print(f"[LỖI NGHIÊM TRỌNG] Không tìm thấy file tại đường dẫn: {self.profile_path}")
+                return ["[LỖI HỆ THỐNG] Không tìm thấy hồ sơ chuẩn để đối chiếu."], False
+            
             with open(self.profile_path, 'r') as f:
                 good_profile = json.load(f)
                 
@@ -46,6 +51,9 @@ class SolutionAIService:
             weather_text = f"- Mưa: {'Có mưa' if weather_data.get('has_rain') else 'Không mưa'} ({weather_data.get('total_precipitation_mm', 0)} mm)\n"
             weather_text += f"- Nhiệt độ: {weather_data.get('avg_temperature_c', 28)} °C\n"
             weather_text += f"- Mây che phủ: {weather_data.get('avg_cloud_cover_pct', 50)}%"
+            weather_text += f"\n- Gió: {weather_data.get('max_wind_speed_kmh', 10)} km/h"
+            weather_text += f"\n- Độ ẩm: {weather_data.get('avg_humidity_pct', 70)}%"
+            weather_text += f"\n- Chỉ số UV: {weather_data.get('max_uv_index', 5)}"
 
         prompt = f"""
         Bạn là một chuyên gia tư vấn nuôi trồng thủy sản. Dựa vào dữ liệu dưới đây, hãy đưa ra phân tích và giải pháp khắc phục ngắn gọn, rõ ràng (Format bằng Markdown).

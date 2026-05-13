@@ -25,3 +25,20 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
+  
+  frontend:
+    build:
+      context: ./fe
+      dockerfile: Dockerfile
+    env_file:
+      - ./fe/.env.development
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./fe:/app
+      - /app/node_modules
+    environment:
+      VITE_API_URL: "http://localhost:5000"
+    depends_on:
+      - backend

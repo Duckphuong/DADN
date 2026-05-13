@@ -1,0 +1,27 @@
+name: dadn-backend
+
+services:
+  backend:
+    build:
+      context: ./be
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ./be/app/.env
+    environment:
+      PORT: "8080"
+      PYTHONUNBUFFERED: "1"
+    ports:
+      - "5000:8080"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=5)",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s

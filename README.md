@@ -21,22 +21,18 @@ Dự án hệ thống giám sát chất lượng nước sử dụng trí tuệ 
 ### Backend
 
 1. Di chuyển vào thư mục backend:
+    git bash (python 3.12.4)
     ```
     cd be
-    ```
-2. Cài đặt dependencies:
-    ```
+    python -m venv .venv
+    source .venv/Scripts/activate
     pip install -r requirements.txt
-    ```
-3. Khởi chạy server:
-
-    ```
     python run.py
-    ```
 
-    Server sẽ chạy trên `http://127.0.0.1:5000`.
+    ```
 
 4. Xem db
+    Server sẽ chạy trên `http://127.0.0.1:5000`.
     ```
     python check_db.py
     ```
@@ -114,9 +110,21 @@ Dự đoán chất lượng nước dựa trên các thông số cảm biến.
 - **Response** (JSON):
     ```json
     {
-        "quality_label": 2,
-        "quality_name": "Good",
-        "solution": "Monitor regularly."
+        "contamination_risk": {
+            "risk_level": 1,
+            "status": "Low Risk"
+        },
+        "forecast_24h": {
+            "confidence_score": 100.0,
+            "model_used": "Random Forest",
+            "predicted_wqi_range": [99.0, 100.0],
+            "trend": "Stable"
+        },
+        "wqi": {
+            "label": "Excellent",
+            "max": 100,
+            "score": 100.0
+        }
     }
     ```
 - **Lỗi**: Trả về `{"error": "message"}` với status code 400 hoặc 500 nếu có lỗi.
@@ -139,23 +147,23 @@ Lấy lịch sử dữ liệu cảm biến và dự đoán.
             "quality_label": 0,
             "quality_name": "Poor",
             "sensor_data": {
-            "Alkalinity": 40.32,
-            "Ammonia": 0.02,
-            "BOD": 1.24,
-            "CO2": 7.84,
-            "Calcium": 52.1,
-            "DO": 3.41,
-            "H2S": 0.0197,
-            "Hardness": 114.95,
-            "Nitrite": 0.001,
-            "Phosphorus": 0.99,
-            "Plankton": 3092.0,
-            "Temp": 21.79,
-            "Turbidity": 78.26,
-            "pH": 6.98
+                "Alkalinity": 40.32,
+                "Ammonia": 0.02,
+                "BOD": 1.24,
+                "CO2": 7.84,
+                "Calcium": 52.1,
+                "DO": 3.41,
+                "H2S": 0.0197,
+                "Hardness": 114.95,
+                "Nitrite": 0.001,
+                "Phosphorus": 0.99,
+                "Plankton": 3092.0,
+                "Temp": 21.79,
+                "Turbidity": 78.26,
+                "pH": 6.98
             },
             "solution": "Immediate action required."
-        },
+        }
     ]
     ```
 - **Lỗi**: Trả về `{"error": "message"}` với status code 500 nếu có lỗi database.

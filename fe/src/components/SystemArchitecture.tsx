@@ -3,10 +3,11 @@ import { Cpu, Cloud, Database, Brain, Smartphone, Bell, Droplet, Thermometer, Za
 export function SystemArchitecture() {
   return (
     <section>
-      <h2 className="text-cyan-900 mb-6">System Architecture</h2>
+      <h2 className="text-cyan-900 mb-6 font-medium text-xl">System Architecture</h2>
       
       <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100 overflow-x-auto">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 md:min-w-[800px]">
+        {/* <div className="flex flex-col md:flex-row items-center justify-between gap-4 md:min-w-[800px] md:flex-nowrap"> */}
+        <div className="flex md:flex-row items-center md:items-start justify-between gap-4 min-w-full md:min-w-[900px]">
           {/* IoT Sensors */}
           <div className="flex flex-col items-center gap-3">
             <div className="bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl p-4 shadow-lg w-full">
@@ -36,7 +37,7 @@ export function SystemArchitecture() {
           </div>
 
           {/* Arrow */}
-          <div className="flex justify-center rotate-90 lg:rotate-0">
+          <div className="flex justify-center items-center h-full">
             <ArrowRight className="w-6 h-6 text-cyan-500" />
           </div>
 
@@ -54,7 +55,7 @@ export function SystemArchitecture() {
           </div>
 
           {/* Arrow */}
-          <div className="flex justify-center rotate-90 lg:rotate-0">
+          <div className="flex justify-center items-center h-full">
             <ArrowRight className="w-6 h-6 text-cyan-500" />
           </div>
 
@@ -72,7 +73,7 @@ export function SystemArchitecture() {
           </div>
 
           {/* Arrow */}
-          <div className="flex justify-center rotate-90 lg:rotate-0">
+          <div className="flex justify-center items-center h-full">
             <ArrowRight className="w-6 h-6 text-cyan-500" />
           </div>
 
@@ -90,7 +91,7 @@ export function SystemArchitecture() {
           </div>
 
           {/* Arrow */}
-          <div className="flex justify-center rotate-90 lg:rotate-0">
+          <div className="flex justify-center items-center h-full">
             <ArrowRight className="w-6 h-6 text-cyan-500" />
           </div>
 
@@ -112,7 +113,7 @@ export function SystemArchitecture() {
         </div>
 
         {/* Data Flow Description */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="mt-8 grid md:grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl p-4 border border-cyan-100">
             <div className="text-sm text-gray-900 mb-2">Data Collection</div>
             <div className="text-xs text-gray-600">

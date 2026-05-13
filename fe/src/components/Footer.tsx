@@ -5,7 +5,7 @@ export function Footer() {
     <footer className="bg-gradient-to-r from-gray-900 via-slate-800 to-gray-900 text-white mt-16">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Team & Project Info */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+        <div className="grid md:grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
           <div>
             <h4 className="text-cyan-400 mb-3 text-sm">Project Information</h4>
             <div className="space-y-2 text-sm text-gray-400">

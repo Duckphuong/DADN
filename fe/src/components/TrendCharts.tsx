@@ -1,59 +1,111 @@
+import React, { useEffect, useState } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
+import { analyticsService } from '../services/api';
+import { Loader2 } from 'lucide-react';
 
-const phData = [
-  { time: '00:00', value: 7.1 },
-  { time: '04:00', value: 7.0 },
-  { time: '08:00', value: 7.2 },
-  { time: '12:00', value: 7.3 },
-  { time: '16:00', value: 7.2 },
-  { time: '20:00', value: 7.1 },
-  { time: '24:00', value: 7.2 }
-];
+// const phData = [
+//   { time: '00:00', value: 7.1 },
+//   { time: '04:00', value: 7.0 },
+//   { time: '08:00', value: 7.2 },
+//   { time: '12:00', value: 7.3 },
+//   { time: '16:00', value: 7.2 },
+//   { time: '20:00', value: 7.1 },
+//   { time: '24:00', value: 7.2 }
+// ];
 
-const temperatureData = [
-  { time: '00:00', value: 22.5 },
-  { time: '04:00', value: 21.8 },
-  { time: '08:00', value: 23.2 },
-  { time: '12:00', value: 25.1 },
-  { time: '16:00', value: 24.5 },
-  { time: '20:00', value: 23.8 },
-  { time: '24:00', value: 22.9 }
-];
+// const temperatureData = [
+//   { time: '00:00', value: 22.5 },
+//   { time: '04:00', value: 21.8 },
+//   { time: '08:00', value: 23.2 },
+//   { time: '12:00', value: 25.1 },
+//   { time: '16:00', value: 24.5 },
+//   { time: '20:00', value: 23.8 },
+//   { time: '24:00', value: 22.9 }
+// ];
 
-const conductivityData = [
-  { time: '00:00', value: 440 },
-  { time: '04:00', value: 435 },
-  { time: '08:00', value: 445 },
-  { time: '12:00', value: 455 },
-  { time: '16:00', value: 450 },
-  { time: '20:00', value: 448 },
-  { time: '24:00', value: 442 }
-];
+// const conductivityData = [
+//   { time: '00:00', value: 440 },
+//   { time: '04:00', value: 435 },
+//   { time: '08:00', value: 445 },
+//   { time: '12:00', value: 455 },
+//   { time: '16:00', value: 450 },
+//   { time: '20:00', value: 448 },
+//   { time: '24:00', value: 442 }
+// ];
 
-const turbidityData = [
-  { location: 'Site A', value: 2.5 },
-  { location: 'Site B', value: 3.2 },
-  { location: 'Site C', value: 1.8 },
-  { location: 'Site D', value: 4.1 },
-  { location: 'Site E', value: 2.9 }
-];
+// const turbidityData = [
+//   { location: 'Site A', value: 2.5 },
+//   { location: 'Site B', value: 3.2 },
+//   { location: 'Site C', value: 1.8 },
+//   { location: 'Site D', value: 4.1 },
+//   { location: 'Site E', value: 2.9 }
+// ];
 
-const doData = [
-  { time: '00:00', value: 7.5 },
-  { time: '04:00', value: 7.7 },
-  { time: '08:00', value: 7.9 },
-  { time: '12:00', value: 8.1 },
-  { time: '16:00', value: 7.8 },
-  { time: '20:00', value: 7.6 },
-  { time: '24:00', value: 7.8 }
-];
+// const doData = [
+//   { time: '00:00', value: 7.5 },
+//   { time: '04:00', value: 7.7 },
+//   { time: '08:00', value: 7.9 },
+//   { time: '12:00', value: 8.1 },
+//   { time: '16:00', value: 7.8 },
+//   { time: '20:00', value: 7.6 },
+//   { time: '24:00', value: 7.8 }
+// ];
 
 export function TrendCharts() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  
+  const [selectedDate, setSelectedDate] = useState('');
+
+  useEffect(() => {
+    const fetchTrends = async () => {
+      try {
+        setLoading(true);
+        const trends = await analyticsService.getTrends(selectedDate || undefined);
+        setData(trends);
+      } catch (error) {
+        console.error("Failed to fetch analytics trends:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTrends();
+  }, [selectedDate]); // Re-fetch khi ngày thay đổi
+
+  if (loading) {
+    return (
+      <div className="lg:col-span-3 flex justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
+
+  if (!data) return null;
+
+  const phData = data.phTrend || [];
+  const temperatureData = data.temperatureTrend || [];
+  const conductivityData = data.conductivityTrend || [];
+  const doData = data.dissolvedOxygenTrend || [];
+  const turbidityData = data.turbidityComparison || [];
+
   return (
     <section>
-      <h2 className="text-cyan-900 mb-6">Trend Analysis</h2>
+      <div className="flex items-center gap-4 mb-6">
+        <h2 className="text-cyan-900 m-0 text-xl font-semibold">Trend Analysis</h2>
+        
+        <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl shadow-sm border border-gray-200">
+          <span className="text-xs text-gray-400 font-medium">Date:</span>
+          <input 
+            type="date" 
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="outline-none text-sm text-cyan-700 font-semibold cursor-pointer bg-transparent"
+          />
+        </div>
+      </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid md:grid-cols-1 lg:grid-cols-2 gap-6">
         {/* pH vs Time */}
         <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
           <h3 className="text-gray-900 mb-4">pH vs Time</h3>
@@ -144,7 +196,7 @@ export function TrendCharts() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="location" stroke="#6b7280" />
+              <XAxis dataKey="sensorName" stroke="#6b7280" />
               <YAxis stroke="#6b7280" />
               <Tooltip 
                 contentStyle={{ 

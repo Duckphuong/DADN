@@ -59,8 +59,8 @@ bool ntpInitialized = false;
 // SPIFFS handles for data persistence
 File dataQueueFile;
 
-// Device identification
-String device_id;
+// Sensor identification
+String sensor_id;
 
 struct SensorReadings {
   // Real sensor
@@ -270,7 +270,6 @@ void readPhysicalSensors() {
   simulateWaterQualityEcosystem();
 }
 
-
 // ============================================
 // SENSOR ACCESS FUNCTIONS
 // ============================================
@@ -337,8 +336,10 @@ float getPlankton() {
 // WIFI CONNECTION WITH EXPONENTIAL BACKOFF
 // ============================================
 
-bool connectWiFi() {
-  if (WiFi.status() == WL_CONNECTED) return true;
+bool connectWiFi()
+{
+  if (WiFi.status() == WL_CONNECTED)
+    return true;
 
   DEBUG_PRINTLN("Connecting to WiFi using WiFiManager...");
   
@@ -498,7 +499,7 @@ void sendSensorData() {
 
   // Collect all sensor readings (simulated ones use cached values)
   StaticJsonDocument<512> doc;  // Reduced from 1024 (actual need ~300-400 bytes)
-  doc["device_id"] = device_id;
+  doc["sensor_id"] = sensor_id;
   doc["timestamp"] = currentReadings.timestamp;
   doc["Temp"] = getTemperature();
   doc["Turbidity"] = getTurbidity();
@@ -589,7 +590,8 @@ void sendSensorData() {
 // MAIN SETUP & LOOP
 // ============================================
 
-void setup() {
+void setup()
+{
   Serial.begin(115200);
   delay(1000);
   DEBUG_PRINTLN("\n=== Water Quality Sensor Firmware ===");
@@ -606,10 +608,10 @@ void setup() {
   WiFi.macAddress(mac);
   char macStr[18];
   sprintf(macStr, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-  device_id = String(macStr);
+  sensor_id = String(macStr);
   
-  DEBUG_PRINT("Device ID: ");
-  DEBUG_PRINTLN(device_id);
+  DEBUG_PRINT("Sensor ID: ");
+  DEBUG_PRINTLN(sensor_id);
   
   sensors.begin();
   
@@ -618,7 +620,8 @@ void setup() {
   sendSensorData();  // Send initial data immediately on startup
 }
 
-void loop() {
+void loop()
+{
   static unsigned long lastSend = 0;
   static bool wasConnected = false;
   

@@ -1,4 +1,8 @@
 /*! tailwindcss v4.1.3 | MIT License | https://tailwindcss.com */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 @layer properties {
   @supports (((-webkit-hyphens: none)) and (not (margin-trim: inline))) or ((-moz-orient: inline) and (not (color: rgb(from red r g b)))) {
     *, :before, :after, ::backdrop {
@@ -819,6 +823,22 @@
   .gap-8 {
     gap: calc(var(--spacing) * 8);
   }
+
+  .fixed { position: fixed; }
+
+  .inset-0 { inset: 0; }
+  
+  .top-\[50\%\] { top: 50%; }
+  
+  .left-\[50\%\] { left: 50%; }
+  
+  .translate-x-\[-50\%\] { --tw-translate-x: -50%; transform: translate(var(--tw-translate-x), var(--tw-translate-y)); }
+
+  .translate-y-\[-50\%\] { --tw-translate-y: -50%; transform: translate(var(--tw-translate-x), var(--tw-translate-y)); }
+  
+  .right-4 { right: 1rem; }
+  
+  .bg-black\/50 { background-color: rgba(0, 0, 0, 0.5); }
 
   :where(.space-y-1\.5 > :not(:last-child)) {
     --tw-space-y-reverse: 0;
@@ -1998,4 +2018,18 @@ html {
   50% {
     opacity: .5;
   }
+}
+
+/* Tắt icon con mắt mặc định trên Edge */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+
+/* Một số trình duyệt khác như Chrome đôi khi cũng tự thêm nút xóa (clear) */
+input::-webkit-contacts-auto-fill-button,
+input::-webkit-credentials-auto-fill-button {
+  visibility: hidden;
+  display: none !important;
+  pointer-events: none;
 }

@@ -1,3 +1,4 @@
+@import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @custom-variant dark (&:is(.dark *));
 
@@ -120,6 +121,12 @@
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
+    --color-badge-admin-bg: #f3e8ff;
+    --color-badge-admin-text: #7e22ce;
+    --color-badge-analyst-bg: #dbeafe;
+    --color-badge-analyst-text: #1d4ed8;
+    --color-badge-viewer-bg: #f1f5f9;
+    --color-badge-viewer-text: #475569;
 }
 
 @layer base {
@@ -361,12 +368,8 @@
 
     /* Footer của Login Card */
     .login-footer {
-        align-self: stretch;
         background-color: #f9fafb;
         border-top: 0.7px solid #f3f4f6;
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
         color: #6a7282;
         height: 68.7px;
         padding: 24.7px 32px 0px;

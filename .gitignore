@@ -5,7 +5,7 @@ __pycache__/
 
 # C extensions
 *.so
-
+.codex
 # Distribution / packaging
 .Python
 build/
@@ -198,6 +198,12 @@ cython_debug/
 #  Cursor is an AI-powered code editor. `.cursorignore` specifies files/directories to
 #  exclude from AI features like autocomplete and code analysis. Recommended for sensitive data
 #  refer to https://docs.cursor.com/context/ignore-files
+
+# Ignore local model assets in backend
+
+# be/modelsAI/
+be/modelsAI/*
+!be/modelsAI/.gitkeep
 
 # Node / Frontend
 node_modules/

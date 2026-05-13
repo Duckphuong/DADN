@@ -81,8 +81,8 @@ export const userService = {
  * AI Prediction Services
  */
 // Lấy lịch sử 50 bản ghi dự đoán gần nhất
-export const getHistory = async (): Promise<HistoryData[]> => {
-	const res = await api.get('/prediction/history');
+export const getHistory = async (sensorId?: string): Promise<HistoryData[]> => {
+	const res = await api.get('/prediction/history', { params: { sensor_id: sensorId } });
 	return res.data;
 };
 

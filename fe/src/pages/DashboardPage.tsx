@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { sensorService } from '../services/api';
+import { getHistory } from '../services/api';
 import { Header } from '../components/Header';
 import { SensorCard } from '../components/SensorCard';
 import { WaterClassificationPanel } from '../components/WaterClassificationPanel';
@@ -17,6 +17,7 @@ import {
     Waves,
     Biohazard,
 } from 'lucide-react';
+import { HistoryData } from '../types/water';
 
 const formatValue = (value: any, decimalPlaces: number = 1): string => {
     if (value === null || value === undefined) {
@@ -28,15 +29,45 @@ const formatValue = (value: any, decimalPlaces: number = 1): string => {
 // Main Page (Dashboard)
 export function Dashboard() {
     const [sensorData, setSensorData] = useState<any>(null);
+    const [latestPrediction, setLatestPrediction] = useState<HistoryData | null>(null);
     const [loading, setLoading] = useState(true);
+
+    const buildSensorSnapshot = (historyItem: HistoryData) => ({
+        sensor_data: {
+            'Nhiệt độ': historyItem['Nhiệt độ'],
+            pH: historyItem.pH,
+            DO: historyItem.DO,
+            'Độ dẫn': historyItem['Độ dẫn'],
+            'Độ kiềm': historyItem['Độ kiềm'],
+            'N-NO2': historyItem['N-NO2'],
+            'N-NH4': historyItem['N-NH4'],
+            'P-PO4': historyItem['P-PO4'],
+            H2S: historyItem.H2S,
+            TSS: historyItem.TSS,
+            COD: historyItem.COD,
+            'Aeromonas tổng số': historyItem['Aeromonas tổng số'],
+            Coliform: historyItem.Coliform,
+        },
+        prediction: historyItem.prediction,
+        created_at: historyItem.created_at,
+        id: historyItem.id,
+        idSensor: historyItem.idSensor,
+    });
 
     const fetchLatestData = async () => {
         try {
             setLoading(true);
-            const response = await sensorService.getLatestData();
-            setSensorData(response);
+            const history = await getHistory();
+            const latestHistory = history?.[0];
+            if (latestHistory) {
+                setLatestPrediction(latestHistory);
+                setSensorData(buildSensorSnapshot(latestHistory));
+            } else {
+                setLatestPrediction(null);
+                setSensorData(null);
+            }
         } catch (error) {
-            console.error('Error fetching sensor data:', error);
+            console.error('Error fetching prediction history:', error);
         } finally {
             setLoading(false);
         }
@@ -88,8 +119,6 @@ export function Dashboard() {
                             <h2 className="text-cyan-900 mb-6 font-medium text-xl">
                                 Real-Time Sensor Readings
                             </h2>
-                            {/* <PredictTable /> */}
-                            {/* <Predict /> */}
                             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 <SensorCard
                                     icon={<Droplet className="w-8 h-8" />}
@@ -349,8 +378,10 @@ export function Dashboard() {
                         </section>
 
                         <div className="grid md:grid-cols-1 lg:grid-cols-2 gap-6">
-                            <WaterClassificationPanel />
-                            <AIPredictionPanel />
+                            <WaterClassificationPanel
+                                sensorId={latestPrediction?.idSensor}
+                            />
+                            <AIPredictionPanel historyItem={latestPrediction} />
                         </div>
 
                         <TrendCharts />

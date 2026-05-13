@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, g, jsonify, request
 
 from app.application.common.exceptions import ValidationError
 from app.domain.shared.time import ensure_utc_datetime, utc_now
@@ -13,6 +13,8 @@ from app.presentation.http.validators.prediction_validators import (
 from app.domain.prediction import PredictModule
 from app.services.ai_model_service import AIModelService
 from app.services.sensor_health_service import SensorHealthService
+from app.presentation.http.middleware.auth_middleware import jwt_required
+from app.infrastructure.persistence.mongo.object_id import parse_object_id
 
 prediction_bp = Blueprint('prediction', __name__, url_prefix="/prediction")
 
@@ -73,13 +75,33 @@ def predict_with_time():
 
 
 @prediction_bp.route('/history', methods=['GET'])
+@jwt_required
 def get_history():
     try:
         db = get_mongo_database()
         if db is None:
             return jsonify({"error": "MongoDB not connected"}), 500
         coll = db.get_collection("predictions")
-        cursor = coll.find().sort("created_at", -1).limit(50)
+
+        sensor_id_param = request.args.get("sensor_id") or request.args.get("sensorId")
+        query: dict = {}
+
+        if sensor_id_param:
+            query["idSensor"] = _normalize_sensor_reference(sensor_id_param)
+        else:
+            sensor_collection = db.get_collection("sensor_informations")
+            owner_id = g.current_user.id if getattr(g, "current_user", None) else None
+            if owner_id:
+                owner_query = {"userId": parse_object_id(owner_id, field_name="user id"), "isDeleted": False}
+                sensor_ids = [
+                    str(sensor.get("_id"))
+                    for sensor in sensor_collection.find(owner_query, {"_id": 1})
+                    if sensor.get("_id") is not None
+                ]
+                if sensor_ids:
+                    query["idSensor"] = {"$in": [_normalize_sensor_reference(sensor_id) for sensor_id in sensor_ids]}
+
+        cursor = coll.find(query).sort("created_at", -1).limit(50)
         history = []
         for d in cursor:
             item = d.copy()
@@ -98,6 +120,11 @@ def get_history():
         return jsonify(history)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+def _normalize_sensor_reference(sensor_id: str):
+    normalized = parse_object_id(sensor_id, field_name="sensor id")
+    return normalized if normalized is not None else sensor_id
 
 
 def _run_prediction_request(data: dict, *, created_at: datetime):

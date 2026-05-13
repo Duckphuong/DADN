@@ -3,12 +3,23 @@ import { Brain, TrendingUp, AlertTriangle, Loader2 } from 'lucide-react';
 import { getHistory } from '../services/api';
 import { HistoryData } from '../types/water'; 
 
-export function AIPredictionPanel() {
+interface AIPredictionPanelProps {
+	historyItem?: HistoryData | null;
+}
+
+export function AIPredictionPanel({ historyItem }: AIPredictionPanelProps) {
 	const [predictionData, setPredictionData] = useState<HistoryData | null>(null);
 	const [loading, setLoading] = useState<boolean>(true);
 	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
+		if (historyItem) {
+			setPredictionData(historyItem);
+			setLoading(false);
+			setError(null);
+			return;
+		}
+
 		const fetchLatestPrediction = async () => {
 			try {
 				setLoading(true);
@@ -25,7 +36,7 @@ export function AIPredictionPanel() {
 		};
 
 		fetchLatestPrediction();
-	}, []);
+	}, [historyItem]);
 
 	if (loading) {
 		return (
@@ -74,7 +85,7 @@ export function AIPredictionPanel() {
 		{/* <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl shadow-lg p-6 border border-indigo-100"> */}
 			<div className="flex items-center justify-between mb-6">
 				<div className="flex items-center gap-3">
-					<div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl p-3 shadow-md">
+					<div className="bg-linear-to-br from-indigo-500 to-purple-600 rounded-xl p-3 shadow-md">
 						<Brain className="w-6 h-6 text-white" />
 					</div>
 					<h2 className="text-gray-900 font-medium">AI Prediction Module</h2>
@@ -102,7 +113,7 @@ export function AIPredictionPanel() {
 					</div>
 					<div className="relative h-3 bg-gray-100 rounded-full overflow-hidden">
 						<div 
-							className="absolute inset-y-0 left-0 bg-gradient-to-r from-green-400 via-blue-400 to-indigo-500 rounded-full transition-all duration-1000"
+							className="absolute inset-y-0 left-0 bg-linear-to-r from-green-400 via-blue-400 to-indigo-500 rounded-full transition-all duration-1000"
 							style={{ width: `${Math.min(100, Math.max(0, wqi.score))}%` }}
 						></div>
 					</div>

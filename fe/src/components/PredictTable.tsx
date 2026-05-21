@@ -312,12 +312,113 @@ export default function PredictTable() {
                                                     className="px-6 py-6"
                                                 >
                                                     <div className="rounded-xl bg-white p-6 shadow-md border border-blue-200">
-                                                        <h3 className="mb-4 text-lg font-bold text-slate-800">
+                                                        <h3 className="mb-4 text-2xl font-extrabold text-slate-800">
                                                             💡 Solution &
                                                             Recommendation
                                                         </h3>
-                                                        <div className="prose prose-slate max-w-none">
-                                                            <ReactMarkdown>
+
+                                                        <div className="max-w-none">
+                                                            <ReactMarkdown
+                                                                components={{
+                                                                    h1: ({
+                                                                        node,
+                                                                        ...props
+                                                                    }) => (
+                                                                        <h1
+                                                                            className="text-3xl font-extrabold mb-5 text-slate-900"
+                                                                            {...props}
+                                                                        />
+                                                                    ),
+
+                                                                    h2: ({
+                                                                        node,
+                                                                        ...props
+                                                                    }) => (
+                                                                        <h2
+                                                                            className="
+                                                                                text-2xl
+                                                                                font-extrabold
+                                                                                mt-8
+                                                                                mb-4
+                                                                                text-slate-800
+                                                                                border-l-4
+                                                                                border-cyan-500
+                                                                                pl-4
+                                                                            "
+                                                                            {...props}
+                                                                        />
+                                                                    ),
+
+                                                                    h3: ({
+                                                                        node,
+                                                                        ...props
+                                                                    }) => (
+                                                                        <h3
+                                                                            className="
+                                                                                text-xl
+                                                                                font-bold
+                                                                                mt-5
+                                                                                mb-3
+                                                                                text-slate-700
+                                                                            "
+                                                                            {...props}
+                                                                        />
+                                                                    ),
+
+                                                                    p: ({
+                                                                        node,
+                                                                        ...props
+                                                                    }) => (
+                                                                        <p
+                                                                            className="
+                                                                                text-base
+                                                                                leading-7
+                                                                                mb-3
+                                                                                text-slate-700
+                                                                            "
+                                                                            {...props}
+                                                                        />
+                                                                    ),
+
+                                                                    ul: ({
+                                                                        node,
+                                                                        ...props
+                                                                    }) => (
+                                                                        <ul
+                                                                            className="
+                                                                                list-disc
+                                                                                pl-6
+                                                                                mb-4
+                                                                                space-y-2
+                                                                            "
+                                                                            {...props}
+                                                                        />
+                                                                    ),
+
+                                                                    li: ({
+                                                                        node,
+                                                                        ...props
+                                                                    }) => (
+                                                                        <li
+                                                                            className="
+                                                                                text-base
+                                                                                text-slate-700
+                                                                            "
+                                                                            {...props}
+                                                                        />
+                                                                    ),
+
+                                                                    strong: ({
+                                                                        node,
+                                                                        ...props
+                                                                    }) => (
+                                                                        <strong
+                                                                            className="font-bold text-slate-900"
+                                                                            {...props}
+                                                                        />
+                                                                    ),
+                                                                }}
+                                                            >
                                                                 {
                                                                     summary.solution
                                                                 }

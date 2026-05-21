@@ -1,51 +1,70 @@
-import { Droplets, Code, Database, Cloud, MapPin } from 'lucide-react';
+import React from 'react';
+import { BrainCircuit, Cpu, Database, Users } from 'lucide-react';
 
 export function Footer() {
   return (
-    <footer className="bg-gradient-to-r from-gray-900 via-slate-800 to-gray-900 text-white mt-16">
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Team & Project Info */}
-        <div className="grid md:grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-          <div>
-            <h4 className="text-cyan-400 mb-3 text-sm">Project Information</h4>
-            <div className="space-y-2 text-sm text-gray-400">
-              <div>AI-Based Water Quality Monitoring</div>
-              <div>IoT + Machine Learning System</div>
-              <div>Real-time Contamination Detection</div>
-            </div>
-          </div>
-          <div>
-            <h4 className="text-cyan-400 mb-3 text-sm">Team Members</h4>
-            <div className="space-y-2 text-sm text-gray-400">
-              <div>Student Name 1 </div>
-              <div>Student Name 2 </div>
-              <div>Student Name 3 </div>
-            </div>
-          </div>
-          <div>
-            <h4 className="text-cyan-400 mb-3 text-sm">Project Alignment</h4>
-            <div className="flex items-start gap-3">
-              <div className="bg-cyan-500 rounded-lg p-3">
-                <Droplets className="w-8 h-8 text-white" />
+    <footer className="bg-[#0f172a] text-slate-400 mt-16 border-t border-slate-800">
+      <div className="max-w-[1600px] mx-auto px-6 py-10">
+        <div className="grid md:grid-cols-4 gap-8 mb-10">
+          
+          {/* Brand & AI Core */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="bg-cyan-500/20 p-2 rounded-lg">
+                <BrainCircuit className="w-5 h-5 text-cyan-400" />
               </div>
-              <div className="text-sm text-gray-400">
-                <div className="text-cyan-400 mb-1">Group 3</div>
-                <div>Aquaculture Intelligence</div>
-                <div className="text-xs mt-1">AI-Powered Water Insights for Smarter Farming</div>
-              </div>
+              <span className="text-lg font-bold text-white tracking-tight">AquaSense AI</span>
             </div>
+            <p className="text-xs leading-relaxed max-w-xs">
+              Advanced Deep Learning platform designed to predict water quality fluctuations and optimize aquaculture environments.
+            </p>
+          </div>
+
+          {/* Column 2: Project Team - CỘT MỚI THÊM */}
+          <div>
+            <h4 className="text-white text-sm font-semibold mb-3 flex items-center gap-2">
+              <Users className="w-4 h-4 text-cyan-400" /> Project Team
+            </h4>
+            <ul className="text-xs space-y-2">
+              <li className="text-cyan-400 font-medium">Group 03_L01</li>
+              <li>Multidisciplinary Project</li>
+            </ul>
+          </div>
+
+          {/* AI Features */}
+          <div>
+            <h4 className="text-white text-sm font-semibold mb-3 flex items-center gap-2">
+              <Cpu className="w-4 h-4 text-cyan-400" /> AI Capabilities
+            </h4>
+            <ul className="text-xs space-y-2">
+              <li className="flex items-center gap-2">• Dissolved Oxygen (DO) Forecasting</li>
+              <li className="flex items-center gap-2">• Early Contamination Anomaly Detection</li>
+              <li className="flex items-center gap-2">• Predictive Historical Trend Analysis</li>
+            </ul>
+          </div>
+
+          {/* Tech Stack */}
+          <div>
+            <h4 className="text-white text-sm font-semibold mb-3 flex items-center gap-2">
+              <Database className="w-4 h-4 text-cyan-400" /> Technical Specs
+            </h4>
+            <ul className="text-xs space-y-2 text-slate-400">
+              <li>Models: LSTM & Random Forest Regressors</li>
+              <li>Engine: Real-time IoT Data Streaming</li>
+              <li>Architecture: Scalable Edge-to-Cloud Integration</li>
+            </ul>
           </div>
         </div>
 
-        {/* Bottom Bar */}
-        <div className="pt-8 border-t border-gray-700 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="text-sm text-gray-500">
-            © 2026 Water Quality Monitoring System. Academic Project.
-          </div>
-          <div className="flex items-center gap-4 text-sm text-gray-500">
-            <span>Powered by AI & IoT</span>
-            <span>•</span>
-            <span>For Educational Purposes</span>
+        {/* Bottom Bar - Retained as requested */}
+        <div className="pt-8 border-t border-slate-800/60 text-center">
+          <div className="text-xs text-slate-500 space-y-1">
+            <p>© 2026 Water Quality Monitoring System. Academic Project.</p>
+            <p className="flex items-center justify-center gap-2 font-medium">
+              Powered by AI & IoT
+              <span className="text-slate-700">•</span>
+              For Educational Purposes
+            </p>
           </div>
         </div>
       </div>

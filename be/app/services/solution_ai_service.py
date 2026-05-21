@@ -44,57 +44,83 @@ class SolutionAIService:
         confidence = forecast.get("confidence_score", 0)
 
         lagging_issues, has_profile = self._find_lagging_parameters(sensor_data)
-        issues_context = "\n".join([f"- {issue}" for issue in lagging_issues]) if lagging_issues else "- Các thông số đều ở mức an toàn."
+        issues_context = "\n".join([f"🔸 {issue}" for issue in lagging_issues]) if lagging_issues else "✅ Các thông số hóa lý đều nằm trong ngưỡng an toàn."
 
-        weather_text = "Không có dữ liệu thời tiết"
+        weather_text = "Dữ liệu khí tượng không khả dụng."
         if weather_data:
-            weather_text = f"- Mưa: {'Có mưa' if weather_data.get('has_rain') else 'Không mưa'} ({weather_data.get('total_precipitation_mm', 0)} mm)\n"
-            weather_text += f"- Nhiệt độ: {weather_data.get('avg_temperature_c', 28)} °C\n"
-            weather_text += f"- Mây che phủ: {weather_data.get('avg_cloud_cover_pct', 50)}%"
-            weather_text += f"\n- Gió: {weather_data.get('max_wind_speed_kmh', 10)} km/h"
-            weather_text += f"\n- Độ ẩm: {weather_data.get('avg_humidity_pct', 70)}%"
-            weather_text += f"\n- Chỉ số UV: {weather_data.get('max_uv_index', 5)}"
+            weather_text = f"🌦️ Lượng mưa: {'Có mưa' if weather_data.get('has_rain') else 'Không mưa'} ({weather_data.get('total_precipitation_mm', 0)} mm)\n"
+            weather_text += f"🌡️ Nhiệt độ: {weather_data.get('avg_temperature_c', 28)} °C\n"
+            weather_text += f"☁️ Độ phủ mây: {weather_data.get('avg_cloud_cover_pct', 50)}%\n"
+            weather_text += f"💨 Tốc độ gió: {weather_data.get('max_wind_speed_kmh', 10)} km/h\n"
+            weather_text += f"💧 Độ ẩm: {weather_data.get('avg_humidity_pct', 70)}%\n"
+            weather_text += f"☀️ Chỉ số bức xạ UV: {weather_data.get('max_uv_index', 5)}"
 
-        prompt = f"""
-        Dựa trên hệ dữ liệu thực nghiệm dưới đây, hãy lập Báo cáo Phân tích Chất lượng Nước.
+        # ---------------------------------------------------------
+        # 1. SYSTEM PROMPT: Định nghĩa Template cứng
+        # ---------------------------------------------------------
+        system_template = """Bạn là Giáo sư Khoa học Môi trường Thủy sản.
+Nhiệm vụ của bạn là điền nội dung phân tích chuyên sâu vào MẪU BÁO CÁO dưới đây. 
+LUẬT LỆ TỐI CAO:
+1. Bắt đầu ngay lập tức bằng "🎯 1. TỔNG QUAN TRẠNG THÁI". KHÔNG có lời chào mở đầu, KHÔNG có câu kết luận dư thừa.
+2. Giữ NGUYÊN SI từng chữ, từng icon của các TIÊU ĐỀ.
+3. Chỉ viết phần phân tích của bạn vào thay thế cho các phần nằm trong ngoặc vuông [...].
 
-        ### DỮ LIỆU ĐẦU VÀO
-        1. Trạng thái Sinh thái (WQI):
-        - Hiện tại: {wqi_score:.1f}/100 ({wqi_label})
-        - Độ tin cậy dự báo: {confidence:.1f}% 
-        - Dự báo 24h: {wqi_range[0]:.1f} - {wqi_range[1]:.1f}
-        - Xu hướng: {trend}
+MẪU BÁO CÁO BẮT BUỘC:
+🎯 1. TỔNG QUAN TRẠNG THÁI
+[Viết 1-2 câu nhận định chuyên môn học thuật về sức khỏe hệ sinh thái]
+- Chỉ số WQI hiện tại: {wqi_score}/100 ({wqi_label})
+- Độ tin cậy dự báo: {confidence}% 
+- Dao động dự báo 24h: {wqi_range_0} - {wqi_range_1}
+- Xu hướng sinh thái: {trend}
 
-        2. Sai lệch Hóa lý & Vi sinh:
-        {issues_context}
+🔬 2. PHÂN TÍCH TƯƠNG QUAN LÝ-HÓA-SINH
+[Dựa vào Dữ Liệu Đầu Vào, phân tích nguyên nhân cốt lõi gây ra các biến động (nếu có). Liên kết tác động chéo giữa các thông số. Dùng list gạch đầu dòng để trình bày rành mạch]
 
-        3. Khí tượng 24h tới:
-        {weather_text}
+⚙️ 3. CHIẾN LƯỢC CAN THIỆP
+⚡ Can thiệp cấp bách:
+- [Biện pháp 1 cần làm ngay]
+- [Biện pháp 2 cần làm ngay]
 
-        ### YÊU CẦU CẤU TRÚC BẮT BUỘC
-        Bắt đầu ngay lập tức bằng "🎯 1. TỔNG QUAN TRẠNG THÁI". Bố cục gồm 3 phần chính:
-        🎯 1. TỔNG QUAN TRẠNG THÁI (Đánh giá sức khỏe hệ sinh thái).
-        🔬 2. PHÂN TÍCH TƯƠNG QUAN LÝ-HÓA-SINH (Giải thích cơ chế gây rủi ro).
-        ⚙️ 3. CHIẾN LƯỢC CAN THIỆP (Bao gồm Can thiệp cấp bách và Quản lý hệ đệm).
-        """
+🛡️ Quản lý hệ đệm (Dài hạn):
+- [Biện pháp duy trì hệ vi sinh/khoáng 1]
+- [Biện pháp duy trì hệ vi sinh/khoáng 2]
+
+🌤️ Tác động khí tượng:
+- [Đánh giá thời tiết 24h tới sẽ làm trầm trọng thêm hay giúp cải thiện tình hình, và hướng phòng tránh]
+"""
+        
+        # Tiêm dữ liệu thực tế vào phần cứng của System Template
+        formatted_system = system_template.format(
+            wqi_score=f"{wqi_score:.1f}",
+            wqi_label=wqi_label,
+            confidence=f"{confidence:.1f}",
+            wqi_range_0=f"{wqi_range[0]:.1f}",
+            wqi_range_1=f"{wqi_range[1]:.1f}",
+            trend=trend
+        )
+
+        # ---------------------------------------------------------
+        # 2. USER PROMPT: Chỉ đưa dữ liệu thô
+        # ---------------------------------------------------------
+        user_prompt = f"""### DỮ LIỆU ĐẦU VÀO ĐỂ PHÂN TÍCH ###
+* Các cảnh báo thông số:
+{issues_context}
+
+* Khí tượng 24h tới:
+{weather_text}
+"""
 
         try:
             chat_completion = self.client.chat.completions.create(
                 messages=[
-                    {
-                        "role": "system",
-                        "content": "Bạn là Giáo sư Khoa học Môi trường Thủy sản. Chỉ trả về ĐÚNG nội dung báo cáo theo chuẩn Markdown. TUYỆT ĐỐI KHÔNG lặp lại prompt, KHÔNG giải thích yêu cầu, KHÔNG chèn lời chào hỏi hay câu kết luận thừa."
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
+                    {"role": "system", "content": formatted_system},
+                    {"role": "user", "content": user_prompt}
                 ],
                 model=self.model_name,
-                temperature=0.3,
+                temperature=0.1,
                 max_tokens=1024,
             )
             return chat_completion.choices[0].message.content
         except Exception as e:
             print(f"Lỗi phần Solution AI (Groq): {e}")
-            return "Cần hành động ngay (Hệ thống AI tư vấn đang bận)."
+            return "⚠️ **Cảnh báo:** Không thể kết nối với hệ thống AI Tư vấn. Đề nghị người vận hành kiểm tra các thông số khẩn cấp theo quy trình thủ công."

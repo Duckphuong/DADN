@@ -29,7 +29,8 @@ const formatValue = (value: any, decimalPlaces: number = 1): string => {
 // Main Page (Dashboard)
 export function Dashboard() {
     const [sensorData, setSensorData] = useState<any>(null);
-    const [latestPrediction, setLatestPrediction] = useState<HistoryData | null>(null);
+    const [latestPrediction, setLatestPrediction] =
+        useState<HistoryData | null>(null);
     const [loading, setLoading] = useState(true);
 
     const buildSensorSnapshot = (historyItem: HistoryData) => ({

@@ -29,32 +29,33 @@ interface PredictResult {
         confidence: number;
         solution: string;
         weather: any;
+        abnormal_parameters: {
+            parameter: string;
+            message: string;
+        }[];
     };
 }
 
 function Predict() {
-    const [data, setData] = useState<SensorData>({
-        'Nhiệt độ': 0,
-        pH: 0,
-        DO: 0,
-        'Độ dẫn': 0,
-        'Độ kiềm': 0,
-        'N-NO2': 0,
-        'N-NH4': 0,
-        'P-PO4': 0,
-        H2S: 0,
-        TSS: 0,
-        COD: 0,
-        'Aeromonas tổng số': 0,
-        Coliform: 0,
+    const [data, setData] = useState<Record<string, string>>({
+        'Nhiệt độ': '',
+        pH: '',
+        DO: '',
+        'Độ dẫn': '',
+        'Độ kiềm': '',
+        'N-NO2': '',
+        'N-NH4': '',
+        'P-PO4': '',
+        H2S: '',
+        TSS: '',
+        COD: '',
+        'Aeromonas tổng số': '',
+        Coliform: '',
     });
 
     const [result, setResult] = useState<PredictResult | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
-    const [focusedField, setFocusedField] = useState<keyof SensorData | null>(
-        null,
-    );
 
     const fieldLabels: Array<keyof SensorData> = [
         'Nhiệt độ',
@@ -75,7 +76,7 @@ function Predict() {
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         setData({
             ...data,
-            [e.target.name]: Number(e.target.value),
+            [e.target.name]: e.target.value,
         });
     };
 
@@ -84,9 +85,16 @@ function Predict() {
             setLoading(true);
             setError(null);
 
+            const formattedData = Object.fromEntries(
+                Object.entries(data).map(([key, value]) => [
+                    key,
+                    value === '' ? 0 : Number(value),
+                ]),
+            );
+
             const res = await predictWater({
                 idSensor: '69ea674c5d325453fddc1733',
-                ...data,
+                ...formattedData,
             });
 
             if (res.error) {
@@ -152,22 +160,10 @@ function Predict() {
 
                                     <input
                                         type="number"
+                                        step="any"
                                         name={key}
-                                        value={
-                                            focusedField === key &&
-                                            data[key] === 0
-                                                ? ''
-                                                : data[key]
-                                        }
+                                        value={data[key]}
                                         onChange={handleChange}
-                                        onFocus={() => {
-                                            if (data[key] === 0) {
-                                                setFocusedField(key);
-                                            }
-                                        }}
-                                        onBlur={() => {
-                                            setFocusedField(null);
-                                        }}
                                         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                                     />
                                 </div>
@@ -257,6 +253,65 @@ function Predict() {
                                         </h3>
                                     </div>
                                 </div>
+
+                                {result.summary.abnormal_parameters?.length >
+                                    0 && (
+                                    <div className="col-span-2 mt-4">
+                                        <p className="text-xs text-slate-500 mb-3">
+                                            {
+                                                result.summary
+                                                    .abnormal_parameters.length
+                                            }{' '}
+                                            tham số vượt ngưỡng
+                                        </p>
+
+                                        <div className="space-y-2">
+                                            {result.summary.abnormal_parameters.map(
+                                                (item: any, index: number) => (
+                                                    <div
+                                                        key={index}
+                                                        className={`rounded-xl border p-3 ${
+                                                            item.status ===
+                                                            'above_safe'
+                                                                ? 'bg-red-50 border-red-200'
+                                                                : 'bg-yellow-50 border-yellow-200'
+                                                        }`}
+                                                    >
+                                                        <div className="flex items-start justify-between gap-3">
+                                                            <div>
+                                                                <p className="font-medium text-slate-800">
+                                                                    {
+                                                                        item.parameter
+                                                                    }
+                                                                </p>
+
+                                                                <p className="text-sm text-slate-600 mt-1">
+                                                                    {
+                                                                        item.message
+                                                                    }
+                                                                </p>
+                                                            </div>
+
+                                                            <span
+                                                                className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                                                    item.status ===
+                                                                    'above_safe'
+                                                                        ? 'bg-red-100 text-red-700'
+                                                                        : 'bg-yellow-100 text-yellow-700'
+                                                                }`}
+                                                            >
+                                                                {item.status ===
+                                                                'above_safe'
+                                                                    ? 'Vượt ngưỡng'
+                                                                    : 'Dưới ngưỡng'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                ),
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* FORECAST */}
                                 <div className="rounded-xl bg-slate-50 p-5">

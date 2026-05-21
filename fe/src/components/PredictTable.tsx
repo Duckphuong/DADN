@@ -386,6 +386,75 @@ export default function PredictTable() {
                                                                         %
                                                                     </p>
                                                                 </div>
+                                                                {summary
+                                                                    .abnormal_parameters
+                                                                    ?.length >
+                                                                    0 && (
+                                                                    <div className="col-span-2 mt-4">
+                                                                        <p className="text-xs text-slate-500 mb-3">
+                                                                            {
+                                                                                summary
+                                                                                    .abnormal_parameters
+                                                                                    .length
+                                                                            }{' '}
+                                                                            tham
+                                                                            số
+                                                                            vượt
+                                                                            ngưỡng
+                                                                        </p>
+
+                                                                        <div className="space-y-2">
+                                                                            {summary.abnormal_parameters.map(
+                                                                                (
+                                                                                    item: any,
+                                                                                    index: number,
+                                                                                ) => (
+                                                                                    <div
+                                                                                        key={
+                                                                                            index
+                                                                                        }
+                                                                                        className={`rounded-xl border p-3 ${
+                                                                                            item.status ===
+                                                                                            'above_safe'
+                                                                                                ? 'bg-red-50 border-red-200'
+                                                                                                : 'bg-yellow-50 border-yellow-200'
+                                                                                        }`}
+                                                                                    >
+                                                                                        <div className="flex items-start justify-between gap-3">
+                                                                                            <div>
+                                                                                                <p className="font-medium text-slate-800">
+                                                                                                    {
+                                                                                                        item.parameter
+                                                                                                    }
+                                                                                                </p>
+
+                                                                                                <p className="text-sm text-slate-600 mt-1">
+                                                                                                    {
+                                                                                                        item.message
+                                                                                                    }
+                                                                                                </p>
+                                                                                            </div>
+
+                                                                                            <span
+                                                                                                className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                                                                                    item.status ===
+                                                                                                    'above_safe'
+                                                                                                        ? 'bg-red-100 text-red-700'
+                                                                                                        : 'bg-yellow-100 text-yellow-700'
+                                                                                                }`}
+                                                                                            >
+                                                                                                {item.status ===
+                                                                                                'above_safe'
+                                                                                                    ? 'Vượt ngưỡng'
+                                                                                                    : 'Dưới ngưỡng'}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ),
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         )}
                                                     </div>

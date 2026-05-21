@@ -36,3 +36,4 @@ dist-ssr/
 # Các file tạm của hệ thống
 /temp
 /build
+test_ai.py

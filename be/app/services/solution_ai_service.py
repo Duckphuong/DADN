@@ -257,7 +257,9 @@ QUAN TRỌNG:
 
                 model=self.model_name,
 
-                temperature=0.15,
+                temperature=0.0,
+
+                seed=42,
 
                 max_tokens=1200,
 

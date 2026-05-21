@@ -56,21 +56,26 @@ class SolutionAIService:
             weather_text += f"\n- Chỉ số UV: {weather_data.get('max_uv_index', 5)}"
 
         prompt = f"""
-        Bạn là một chuyên gia tư vấn nuôi trồng thủy sản. Dựa vào dữ liệu dưới đây, hãy đưa ra phân tích và giải pháp khắc phục ngắn gọn, rõ ràng (Format bằng Markdown).
+        Dựa trên hệ dữ liệu thực nghiệm dưới đây, hãy lập Báo cáo Phân tích Chất lượng Nước.
 
-        1. TRẠNG THÁI HỆ THỐNG:
-        - Điểm WQI hiện tại: {wqi_score:.1f}/100 ({wqi_label})
-        - Độ tin cậy của AI: {confidence:.1f}% 
-        - Dải WQI dự báo (24h tới): từ {wqi_range[0]:.1f} đến {wqi_range[1]:.1f}
+        ### DỮ LIỆU ĐẦU VÀO
+        1. Trạng thái Sinh thái (WQI):
+        - Hiện tại: {wqi_score:.1f}/100 ({wqi_label})
+        - Độ tin cậy dự báo: {confidence:.1f}% 
+        - Dự báo 24h: {wqi_range[0]:.1f} - {wqi_range[1]:.1f}
         - Xu hướng: {trend}
 
-        2. CHI TIẾT CẢM BIẾN & LỖI:
+        2. Sai lệch Hóa lý & Vi sinh:
         {issues_context}
 
-        3. THỜI TIẾT 24H TỚI:
+        3. Khí tượng 24h tới:
         {weather_text}
 
-        YÊU CẦU: Trả lời đi thẳng vào nguyên nhân và các bước hành động cụ thể để cứu hồ nước.
+        ### YÊU CẦU CẤU TRÚC BẮT BUỘC
+        Bắt đầu ngay lập tức bằng "🎯 1. TỔNG QUAN TRẠNG THÁI". Bố cục gồm 3 phần chính:
+        🎯 1. TỔNG QUAN TRẠNG THÁI (Đánh giá sức khỏe hệ sinh thái).
+        🔬 2. PHÂN TÍCH TƯƠNG QUAN LÝ-HÓA-SINH (Giải thích cơ chế gây rủi ro).
+        ⚙️ 3. CHIẾN LƯỢC CAN THIỆP (Bao gồm Can thiệp cấp bách và Quản lý hệ đệm).
         """
 
         try:
@@ -78,7 +83,7 @@ class SolutionAIService:
                 messages=[
                     {
                         "role": "system",
-                        "content": "Bạn là chuyên gia tư vấn chất lượng nước. Luôn trả lời bằng Tiếng Việt, định dạng Markdown rõ ràng, chuyên nghiệp."
+                        "content": "Bạn là Giáo sư Khoa học Môi trường Thủy sản. Chỉ trả về ĐÚNG nội dung báo cáo theo chuẩn Markdown. TUYỆT ĐỐI KHÔNG lặp lại prompt, KHÔNG giải thích yêu cầu, KHÔNG chèn lời chào hỏi hay câu kết luận thừa."
                     },
                     {
                         "role": "user",

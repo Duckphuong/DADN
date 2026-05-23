@@ -225,7 +225,7 @@ export function Admin() {
     <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-blue-50 to-blue-100 flex flex-col">
       <Header />
       
-      <main className="flex-1 max-w-[1600px] w-full px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <main className="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         <div className="bg-white/80 mx-auto backdrop-blur-xl border border-white/40 shadow-xl rounded-2xl overflow-hidden">
           <div className="px-10 py-6 flex flex-row justify-between items-center gap-10">
             <div className="relative flex-1">

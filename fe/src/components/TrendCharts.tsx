@@ -15,53 +15,53 @@ import {
 import { analyticsService } from '../services/api';
 import { Loader2 } from 'lucide-react';
 
-// const phData = [
-//   { time: '00:00', value: 7.1 },
-//   { time: '04:00', value: 7.0 },
-//   { time: '08:00', value: 7.2 },
-//   { time: '12:00', value: 7.3 },
-//   { time: '16:00', value: 7.2 },
-//   { time: '20:00', value: 7.1 },
-//   { time: '24:00', value: 7.2 }
-// ];
+const phData = [
+    { time: '00:00', value: 7.1 },
+    { time: '04:00', value: 7.0 },
+    { time: '08:00', value: 7.2 },
+    { time: '12:00', value: 7.3 },
+    { time: '16:00', value: 7.2 },
+    { time: '20:00', value: 7.1 },
+    { time: '24:00', value: 7.2 },
+];
 
-// const temperatureData = [
-//   { time: '00:00', value: 22.5 },
-//   { time: '04:00', value: 21.8 },
-//   { time: '08:00', value: 23.2 },
-//   { time: '12:00', value: 25.1 },
-//   { time: '16:00', value: 24.5 },
-//   { time: '20:00', value: 23.8 },
-//   { time: '24:00', value: 22.9 }
-// ];
+const temperatureData = [
+    { time: '00:00', value: 22.5 },
+    { time: '04:00', value: 21.8 },
+    { time: '08:00', value: 23.2 },
+    { time: '12:00', value: 25.1 },
+    { time: '16:00', value: 24.5 },
+    { time: '20:00', value: 23.8 },
+    { time: '24:00', value: 22.9 },
+];
 
-// const conductivityData = [
-//   { time: '00:00', value: 440 },
-//   { time: '04:00', value: 435 },
-//   { time: '08:00', value: 445 },
-//   { time: '12:00', value: 455 },
-//   { time: '16:00', value: 450 },
-//   { time: '20:00', value: 448 },
-//   { time: '24:00', value: 442 }
-// ];
+const conductivityData = [
+    { time: '00:00', value: 440 },
+    { time: '04:00', value: 435 },
+    { time: '08:00', value: 445 },
+    { time: '12:00', value: 455 },
+    { time: '16:00', value: 450 },
+    { time: '20:00', value: 448 },
+    { time: '24:00', value: 442 },
+];
 
-// const turbidityData = [
-//   { location: 'Site A', value: 2.5 },
-//   { location: 'Site B', value: 3.2 },
-//   { location: 'Site C', value: 1.8 },
-//   { location: 'Site D', value: 4.1 },
-//   { location: 'Site E', value: 2.9 }
-// ];
+const turbidityData = [
+    { location: 'Site A', value: 2.5 },
+    { location: 'Site B', value: 3.2 },
+    { location: 'Site C', value: 1.8 },
+    { location: 'Site D', value: 4.1 },
+    { location: 'Site E', value: 2.9 },
+];
 
-// const doData = [
-//   { time: '00:00', value: 7.5 },
-//   { time: '04:00', value: 7.7 },
-//   { time: '08:00', value: 7.9 },
-//   { time: '12:00', value: 8.1 },
-//   { time: '16:00', value: 7.8 },
-//   { time: '20:00', value: 7.6 },
-//   { time: '24:00', value: 7.8 }
-// ];
+const doData = [
+    { time: '00:00', value: 7.5 },
+    { time: '04:00', value: 7.7 },
+    { time: '08:00', value: 7.9 },
+    { time: '12:00', value: 8.1 },
+    { time: '16:00', value: 7.8 },
+    { time: '20:00', value: 7.6 },
+    { time: '24:00', value: 7.8 },
+];
 
 export function TrendCharts() {
     const [data, setData] = useState<any>(null);
@@ -97,11 +97,11 @@ export function TrendCharts() {
 
     if (!data) return null;
 
-    const phData = data.phTrend || [];
-    const temperatureData = data.temperatureTrend || [];
-    const conductivityData = data.conductivityTrend || [];
-    const doData = data.dissolvedOxygenTrend || [];
-    const turbidityData = data.turbidityComparison || [];
+    // const phData = data.phTrend || [];
+    // const temperatureData = data.temperatureTrend || [];
+    // const conductivityData = data.conductivityTrend || [];
+    // const doData = data.dissolvedOxygenTrend || [];
+    // const turbidityData = data.turbidityComparison || [];
 
     return (
         <section>

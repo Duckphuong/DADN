@@ -312,12 +312,113 @@ export default function PredictTable() {
                                                     className="px-6 py-6"
                                                 >
                                                     <div className="rounded-xl bg-white p-6 shadow-md border border-blue-200">
-                                                        <h3 className="mb-4 text-lg font-bold text-slate-800">
+                                                        <h3 className="mb-4 text-2xl font-extrabold text-slate-800">
                                                             💡 Solution &
                                                             Recommendation
                                                         </h3>
-                                                        <div className="prose prose-slate max-w-none">
-                                                            <ReactMarkdown>
+
+                                                        <div className="max-w-none">
+                                                            <ReactMarkdown
+                                                                components={{
+                                                                    h1: ({
+                                                                        node,
+                                                                        ...props
+                                                                    }) => (
+                                                                        <h1
+                                                                            className="text-3xl font-extrabold mb-5 text-slate-900"
+                                                                            {...props}
+                                                                        />
+                                                                    ),
+
+                                                                    h2: ({
+                                                                        node,
+                                                                        ...props
+                                                                    }) => (
+                                                                        <h2
+                                                                            className="
+                                                                                text-2xl
+                                                                                font-extrabold
+                                                                                mt-8
+                                                                                mb-4
+                                                                                text-slate-800
+                                                                                border-l-4
+                                                                                border-cyan-500
+                                                                                pl-4
+                                                                            "
+                                                                            {...props}
+                                                                        />
+                                                                    ),
+
+                                                                    h3: ({
+                                                                        node,
+                                                                        ...props
+                                                                    }) => (
+                                                                        <h3
+                                                                            className="
+                                                                                text-xl
+                                                                                font-bold
+                                                                                mt-5
+                                                                                mb-3
+                                                                                text-slate-700
+                                                                            "
+                                                                            {...props}
+                                                                        />
+                                                                    ),
+
+                                                                    p: ({
+                                                                        node,
+                                                                        ...props
+                                                                    }) => (
+                                                                        <p
+                                                                            className="
+                                                                                text-base
+                                                                                leading-7
+                                                                                mb-3
+                                                                                text-slate-700
+                                                                            "
+                                                                            {...props}
+                                                                        />
+                                                                    ),
+
+                                                                    ul: ({
+                                                                        node,
+                                                                        ...props
+                                                                    }) => (
+                                                                        <ul
+                                                                            className="
+                                                                                list-disc
+                                                                                pl-6
+                                                                                mb-4
+                                                                                space-y-2
+                                                                            "
+                                                                            {...props}
+                                                                        />
+                                                                    ),
+
+                                                                    li: ({
+                                                                        node,
+                                                                        ...props
+                                                                    }) => (
+                                                                        <li
+                                                                            className="
+                                                                                text-base
+                                                                                text-slate-700
+                                                                            "
+                                                                            {...props}
+                                                                        />
+                                                                    ),
+
+                                                                    strong: ({
+                                                                        node,
+                                                                        ...props
+                                                                    }) => (
+                                                                        <strong
+                                                                            className="font-bold text-slate-900"
+                                                                            {...props}
+                                                                        />
+                                                                    ),
+                                                                }}
+                                                            >
                                                                 {
                                                                     summary.solution
                                                                 }
@@ -386,6 +487,75 @@ export default function PredictTable() {
                                                                         %
                                                                     </p>
                                                                 </div>
+                                                                {summary
+                                                                    .abnormal_parameters
+                                                                    ?.length >
+                                                                    0 && (
+                                                                    <div className="col-span-2 mt-4">
+                                                                        <p className="text-xs text-slate-500 mb-3">
+                                                                            {
+                                                                                summary
+                                                                                    .abnormal_parameters
+                                                                                    .length
+                                                                            }{' '}
+                                                                            tham
+                                                                            số
+                                                                            vượt
+                                                                            ngưỡng
+                                                                        </p>
+
+                                                                        <div className="space-y-2">
+                                                                            {summary.abnormal_parameters.map(
+                                                                                (
+                                                                                    item: any,
+                                                                                    index: number,
+                                                                                ) => (
+                                                                                    <div
+                                                                                        key={
+                                                                                            index
+                                                                                        }
+                                                                                        className={`rounded-xl border p-3 ${
+                                                                                            item.status ===
+                                                                                            'above_safe'
+                                                                                                ? 'bg-red-50 border-red-200'
+                                                                                                : 'bg-yellow-50 border-yellow-200'
+                                                                                        }`}
+                                                                                    >
+                                                                                        <div className="flex items-start justify-between gap-3">
+                                                                                            <div>
+                                                                                                <p className="font-medium text-slate-800">
+                                                                                                    {
+                                                                                                        item.parameter
+                                                                                                    }
+                                                                                                </p>
+
+                                                                                                <p className="text-sm text-slate-600 mt-1">
+                                                                                                    {
+                                                                                                        item.message
+                                                                                                    }
+                                                                                                </p>
+                                                                                            </div>
+
+                                                                                            <span
+                                                                                                className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                                                                                    item.status ===
+                                                                                                    'above_safe'
+                                                                                                        ? 'bg-red-100 text-red-700'
+                                                                                                        : 'bg-yellow-100 text-yellow-700'
+                                                                                                }`}
+                                                                                            >
+                                                                                                {item.status ===
+                                                                                                'above_safe'
+                                                                                                    ? 'Vượt ngưỡng'
+                                                                                                    : 'Dưới ngưỡng'}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ),
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         )}
                                                     </div>

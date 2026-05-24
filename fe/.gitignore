@@ -36,3 +36,10 @@ dist-ssr/
 # Các file tạm của hệ thống
 /temp
 /build
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

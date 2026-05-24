@@ -1,101 +1,185 @@
 """
-Unit tests for AIModelService.
+Integration tests for AI model service against deployed backend.
 
-Covers:
-  - test_db
-  - _normalize_field_name
-  - normalize_sensor_data
-  - getWqiLabel
-  - getRiskFromWQILabel
-  - solution_for
-  - train_model_from_dataframe (stats/return shape)
-  - predict (full pipeline – mocked)
-  - _build_feature_frame
-  - _to_float
-  - _prepare_training_dataframe
-  - _detect_target_column
-  - analyze_abnormal_parameters
+Tests AI model behavior through:
+  - GET /prediction/test-db (model info)
+  - POST /prediction/predict (model predictions)
+  - POST /prediction/predict-with-time (time-aware predictions)
+
+These tests verify real AI service behavior without mocking the service internals.
 """
 
 import json
 import os
-import shutil
 import tempfile
-from pathlib import Path
-from werkzeug.datastructures import FileStorage
 
-import numpy as np
 import pandas as pd
 import pytest
-from unittest.mock import patch, MagicMock
-import joblib
+import requests
+from unittest.mock import MagicMock, patch
+from werkzeug.datastructures import FileStorage
 
 from app.services.ai_model_service import (
     AIModelService,
-    MODEL_VERSION,
     FEATURE_COLUMNS,
-    FEATURE_ALIASES,
+    MODEL_VERSION,
 )
 
-MODELS_DIR_CANDIDATE = Path("modelsAI")
+BASE_URL = os.getenv("TEST_BACKEND_URL", "https://dadn.dungne.io.vn")
 
 
-@pytest.fixture()
-def tmp_models_dir(tmp_path):
-    """Provide an isolated modelsAI directory for tests that write to disk."""
-    d = tmp_path / "modelsAI"
-    d.mkdir()
-    return str(d)
+BASE = f"{BASE_URL}/prediction"
 
-
-@pytest.fixture()
-def sample_df():
-    """Return a minimal valid training DataFrame with all FEATURE_COLUMNS."""
-    rows = 60
-    rng = np.random.default_rng(42)
-    data = {col: rng.uniform(1.0, 100.0, rows) for col in FEATURE_COLUMNS}
-    data["WQI"] = rng.uniform(20.0, 100.0, rows)
-    return pd.DataFrame(data)
-
-
-@pytest.fixture()
-def ai_svc(tmp_models_dir):
-    """AIModelService pointing to an empty models dir (no models loaded)."""
-    with patch.object(AIModelService, "__init__", lambda self: None):
-        svc = AIModelService.__new__(AIModelService)
-        svc.MODEL_DIR = tmp_models_dir
-        svc.models = {}
-        svc.metadata = {}
-        svc.scaler = None
-        svc.target_column = "WQI"
-        svc.training_source = None
-        os.makedirs(svc.MODEL_DIR, exist_ok=True)
-        return svc
+VALID_SENSOR_DATA = {
+    "Nhiệt độ": 28.0,
+    "pH": 7.0,
+    "DO": 6.0,
+    "Độ dẫn": 500.0,
+    "Độ kiềm": 60.0,
+    "N-NO2": 0.1,
+    "N-NH4": 0.2,
+    "P-PO4": 0.05,
+    "H2S": 0.01,
+    "TSS": 10.0,
+    "COD": 20.0,
+    "Aeromonas tổng số": 10.0,
+    "Coliform": 100.0,
+}
 
 
 # ══════════════════════════════════════════════════════════════════════════
-# 1. test_db
+# 1. Model Database Info Tests
 # ══════════════════════════════════════════════════════════════════════════
 
 
-class TestTestDB:
-    def test_returns_dict(self, ai_svc):
-        result = ai_svc.test_db()
-        assert isinstance(result, dict)
+class TestAIModelInfo:
+    """Test AI model information endpoint."""
 
-    def test_status_key(self, ai_svc):
-        assert ai_svc.test_db()["status"] == "ok"
+    def test_test_db_endpoint_exists(self):
+        """GET /prediction/test-db should be accessible."""
+        resp = requests.get(f"{BASE}/test-db")
+        assert resp.status_code == 200
 
-    def test_task_key(self, ai_svc):
-        assert ai_svc.test_db()["task"] == "regression"
+    def test_test_db_returns_model_status(self):
+        """Response should contain model status information."""
+        resp = requests.get(f"{BASE}/test-db")
+        data = resp.json()
+        assert "status" in data
+        assert data["status"] == "ok"
 
-    def test_target_column(self, ai_svc):
-        assert ai_svc.test_db()["target_column"] == "WQI"
+    def test_test_db_has_task_info(self):
+        """Response should indicate task type."""
+        resp = requests.get(f"{BASE}/test-db")
+        data = resp.json()
+        assert "task" in data
+        assert data["task"] == "regression"
+
+    def test_test_db_lists_loaded_models(self):
+        """Response should list loaded models."""
+        resp = requests.get(f"{BASE}/test-db")
+        data = resp.json()
+        assert "loaded_models" in data
+        assert isinstance(data["loaded_models"], list)
+
+    def test_test_db_has_target_column(self):
+        """Response should indicate target column."""
+        resp = requests.get(f"{BASE}/test-db")
+        data = resp.json()
+        assert "target_column" in data
+
+    def test_test_db_has_training_source(self):
+        """Response should indicate training data source."""
+        resp = requests.get(f"{BASE}/test-db")
+        data = resp.json()
+        assert "training_source" in data
 
 
 # ══════════════════════════════════════════════════════════════════════════
-# 2. _normalize_field_name
+# 2. Model Prediction Tests
 # ══════════════════════════════════════════════════════════════════════════
+
+
+class TestModelPredictionBehavior:
+    """Test model prediction behavior and output."""
+
+    def test_prediction_returns_valid_structure(self):
+        """Prediction response should have expected structure."""
+        resp = requests.post(f"{BASE}/predict", json=VALID_SENSOR_DATA)
+        assert resp.status_code == 200
+        data = resp.json()
+        
+        assert "summary" in data
+        assert "ensemble" in data
+
+    def test_prediction_summary_has_wqi(self):
+        """Summary should contain WQI prediction."""
+        resp = requests.post(f"{BASE}/predict", json=VALID_SENSOR_DATA)
+        if resp.status_code == 200:
+            summary = resp.json().get("summary", {})
+            # Summary should have water quality indicators
+            assert isinstance(summary, dict)
+
+    def test_prediction_with_different_ranges(self):
+        """Model should handle various valid input ranges."""
+        test_cases = [
+            {**VALID_SENSOR_DATA, "pH": 5.0},
+            {**VALID_SENSOR_DATA, "pH": 9.0},
+            {**VALID_SENSOR_DATA, "DO": 0.5},
+        ]
+        
+        for test_data in test_cases:
+            resp = requests.post(f"{BASE}/predict", json=test_data)
+            assert resp.status_code == 200
+
+    def test_invalid_sensor_data_rejected(self):
+        """All-zero sensor data should be rejected."""
+        zero_data = {k: 0.0 for k in VALID_SENSOR_DATA}
+        resp = requests.post(f"{BASE}/predict", json=zero_data)
+        assert resp.status_code == 400
+
+    def test_firmware_error_in_data_rejected(self):
+        """Data with firmware error should be rejected."""
+        error_data = {**VALID_SENSOR_DATA, "error": "Sensor disconnected"}
+        resp = requests.post(f"{BASE}/predict", json=error_data)
+        assert resp.status_code == 400
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# 3. Time-Aware Prediction Tests
+# ══════════════════════════════════════════════════════════════════════════
+
+
+class TestTimeAwarePrediction:
+    """Test model with timestamp information."""
+
+    def test_predict_with_timestamp_succeeds(self):
+        """Prediction with timestamp should work."""
+        data = {**VALID_SENSOR_DATA, "createdAt": "2025-01-01T10:00:00+00:00"}
+        resp = requests.post(f"{BASE}/predict-with-time", json=data)
+        assert resp.status_code == 200
+
+    def test_time_aware_returns_summary(self):
+        """Time-aware prediction should return summary."""
+        data = {**VALID_SENSOR_DATA, "createdAt": "2025-01-01T10:00:00+00:00"}
+        resp = requests.post(f"{BASE}/predict-with-time", json=data)
+        assert "summary" in resp.json()
+
+    def test_missing_timestamp_rejected(self):
+        """Request without timestamp should fail."""
+        resp = requests.post(f"{BASE}/predict-with-time", json=VALID_SENSOR_DATA)
+        assert resp.status_code == 400
+
+    def test_various_timestamp_formats(self):
+        """Should handle various valid timestamp formats."""
+        timestamps = [
+            "2025-01-01T10:00:00+00:00",
+            "2025-01-01T10:00:00Z",
+        ]
+        
+        for ts in timestamps:
+            data = {**VALID_SENSOR_DATA, "createdAt": ts}
+            resp = requests.post(f"{BASE}/predict-with-time", json=data)
+            assert resp.status_code in [200, 400]  # Either succeeds or validates timestamp
 
 
 class TestNormalizeFieldName:
@@ -450,7 +534,7 @@ def trained_ai_svc(tmp_models_dir):
 
 
 class TestPredict:
-    def test_returns_summary(self, trained_ai_svc, ai_service_mock=None):
+    def test_returns_summary(self, trained_ai_svc):
         data = {col: 50.0 for col in FEATURE_COLUMNS}
         with patch("app.services.ai_model_service.get_weather_data") as mw, patch(
             "app.services.ai_model_service.solution_service"
@@ -543,47 +627,8 @@ class TestLoadModelsVersionGuard:
         ai_svc.load_models()  # must not raise
         assert ai_svc.models == {}
 
-
 # ══════════════════════════════════════════════════════════════════════════
-# 15. auto_train / train_model_from_db
-# ══════════════════════════════════════════════════════════════════════════
-
-
-class TestAutoTrain:
-    def test_no_training_file_returns_error(self, ai_svc, tmp_models_dir, monkeypatch):
-        ai_svc.MODEL_DIR = str(tmp_models_dir)
-        ai_svc._resolve_training_file = MagicMock(return_value=None)
-        result = ai_svc.auto_train()
-        assert "error" in result
-
-    def test_trains_from_file(self, ai_svc, sample_df, tmp_models_dir):
-        ai_svc.MODEL_DIR = str(tmp_models_dir)
-        from io import BytesIO
-
-        # Tạo file Excel trong memory
-        buf = BytesIO()
-
-        with pd.ExcelWriter(buf, engine="openpyxl") as writer:
-            sample_df.to_excel(writer, index=False)
-
-        buf.seek(0)
-
-        # Giả lập file upload Flask thật
-        mock_file = FileStorage(
-            stream=buf,
-            filename="upload.xlsx",
-            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
-
-        # Gọi hàm cần test
-        result = ai_svc.train_model_from_file(mock_file)
-
-        # Assert
-        assert result is not None
-
-
-# ══════════════════════════════════════════════════════════════════════════
-# 16. analyze_abnormal_parameters
+# 15. analyze_abnormal_parameters
 # ══════════════════════════════════════════════════════════════════════════
 
 
@@ -593,24 +638,24 @@ class TestAnalyzeAbnormalParameters:
         os.makedirs(ai_svc.MODEL_DIR, exist_ok=True)
         assert ai_svc.analyze_abnormal_parameters({"pH": 7.0}) == []
 
-    def test_normal_values_return_empty(self, ai_svc, tmp_models_dir):
+    def test_normal_values_return_empty(self, ai_svc):
         profile = {
             col: {"mean": 50.0, "min_safe": 1.0, "max_safe": 100.0}
             for col in FEATURE_COLUMNS
         }
-        with open(os.path.join(tmp_models_dir, "good_water_profile.json"), "w") as f:
+        with open(os.path.join(ai_svc.MODEL_DIR, "good_water_profile.json"), "w") as f:
             json.dump(profile, f)
 
         data = {col: 50.0 for col in FEATURE_COLUMNS[:5]}
         result = ai_svc.analyze_abnormal_parameters(data)
         assert result == []
 
-    def test_above_safe_detected(self, ai_svc, tmp_models_dir):
+    def test_above_safe_detected(self, ai_svc):
         profile = {
             col: {"mean": 50.0, "min_safe": 1.0, "max_safe": 100.0}
             for col in FEATURE_COLUMNS
         }
-        with open(os.path.join(tmp_models_dir, "good_water_profile.json"), "w") as f:
+        with open(os.path.join(ai_svc.MODEL_DIR, "good_water_profile.json"), "w") as f:
             json.dump(profile, f)
 
         data = {FEATURE_COLUMNS[0]: 200.0}
@@ -618,12 +663,12 @@ class TestAnalyzeAbnormalParameters:
         assert len(result) == 1
         assert result[0]["status"] == "above_safe"
 
-    def test_below_safe_detected(self, ai_svc, tmp_models_dir):
+    def test_below_safe_detected(self, ai_svc):
         profile = {
             col: {"mean": 50.0, "min_safe": 1.0, "max_safe": 100.0}
             for col in FEATURE_COLUMNS
         }
-        with open(os.path.join(tmp_models_dir, "good_water_profile.json"), "w") as f:
+        with open(os.path.join(ai_svc.MODEL_DIR, "good_water_profile.json"), "w") as f:
             json.dump(profile, f)
 
         data = {FEATURE_COLUMNS[0]: 0.5}

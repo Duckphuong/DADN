@@ -1,6 +1,9 @@
 """
 Unit tests for prediction_validators.
 
+These are pure unit tests for validator functions and don't depend on
+external services or the deployed backend. They test data validation logic.
+
 Covers:
   - validate_predict_request
   - validate_predict_request_with_time
@@ -98,6 +101,7 @@ class TestParsePredictionTimestamp:
 
     def test_list_raises(self):
         with pytest.raises(ValidationError):
+            parse_prediction_timestamp(["2025-01-01"])
             parse_prediction_timestamp([1, 2, 3])
 
 

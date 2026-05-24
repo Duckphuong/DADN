@@ -8,10 +8,11 @@ background scheduler jobs.
 
 import os
 import sys
+import tempfile
 
+import pandas as pd
 import pytest
 from unittest.mock import MagicMock, patch
-
 
 # ══════════════════════════════════════════════════════════════════════════
 # 0. Environment boot-strap (must run BEFORE any app imports)
@@ -178,7 +179,7 @@ def client(monkeypatch):
     flask_app = create_app()
     flask_app.config["TESTING"] = True
 
-    # ── Replace module-level service singletons ────────────────────────────
+    # ── Replace module-level service singletons ───────────────────────────
     import app.routes.prediction_routes as pred_mod
     import app.services.sensor_health_service as sh_mod
     import app.routes.alert_routes as alert_mod
@@ -249,3 +250,70 @@ def client(monkeypatch):
     finally:
         pred_mod.get_mongo_database = _orig_pred_get_mongo
         alert_mod.get_mongo_database = _orig_alert_get_mongo
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# 4. Service Fixtures for Unit Tests (lazy imports to avoid early instantiation)
+# ══════════════════════════════════════════════════════════════════════════
+
+@pytest.fixture
+def ai_svc():
+    """AIModelService fixture for unit tests."""
+    # Lazy import to avoid SolutionAIService() instantiation at module load
+    from app.services.ai_model_service import AIModelService, FEATURE_COLUMNS
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        svc = object.__new__(AIModelService)
+        svc.MODEL_DIR = tmpdir
+        svc.models = {}
+        svc.metadata = {}
+        svc.scaler = None
+        svc.target_column = "WQI"
+        svc.training_source = None
+        yield svc
+
+
+@pytest.fixture
+def sample_df():
+    """Sample DataFrame with valid training data for 12+ rows."""
+    # Lazy import to avoid SolutionAIService() instantiation
+    from app.services.ai_model_service import FEATURE_COLUMNS
+
+    data = {col: [50.0] * 12 for col in FEATURE_COLUMNS}
+    data["WQI"] = [70.0] * 12
+    return pd.DataFrame(data)
+
+
+@pytest.fixture
+def tmp_models_dir():
+    """Temporary directory for model storage."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        yield tmpdir
+
+
+@pytest.fixture
+def service():
+    """AlertService fixture with dummy SMTP config for unit tests."""
+    from app.services.alert_service import AlertService
+
+    return AlertService(
+        smtp_server="smtp.example.com",
+        smtp_port=587,
+        email="test@example.com",
+        password="dummy",
+        enabled=True,
+    )
+
+
+@pytest.fixture
+def disabled_service():
+    """AlertService fixture with disabled notifications."""
+    from app.services.alert_service import AlertService
+
+    return AlertService(
+        smtp_server="smtp.example.com",
+        smtp_port=587,
+        email="test@example.com",
+        password="dummy",
+        enabled=False,
+    )

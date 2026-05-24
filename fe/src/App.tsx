@@ -37,6 +37,18 @@ const AdminProtectedRoute = ({ children }: { children: JSX.Element }) => {
     return children;
 };
 
+// Component xử lý điều hướng cho các đường dẫn lạ (404)
+const CatchAllRedirect = () => {
+    const isAuthenticated = document.cookie.includes('access_token');
+    const isAdmin = document.cookie.includes('user_role=ADMIN');
+
+    if (!isAuthenticated) return <Navigate to="/login" replace />;
+    
+    if (isAdmin) return <Navigate to="/admin" replace />;
+    
+    return <Navigate to="/" replace />;
+};
+
 export default function App() {
     return (
         <Router>
@@ -87,12 +99,7 @@ export default function App() {
                 {/* Chuyển hướng các đường dẫn lạ về trang chính */}
                 <Route
                     path="*"
-                    // element={<Navigate to="/" />}
-                    element={
-                        <ProtectedRoute>
-                            <Dashboard />
-                        </ProtectedRoute>
-                    }
+                    element={<CatchAllRedirect />}
                 />
             </Routes>
         </Router>

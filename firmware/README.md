@@ -50,12 +50,30 @@ Kết nối **5 cảm biến analog** (Turbidity, DO, pH, Ammonia, H2S) vào cá
 
 ## Cấu hình
 
-Trước khi upload, hãy chỉnh sửa phần cấu hình trong `water_quality.ino`:
+### WiFi Configuration (Auto via WiFiManager)
 
-1. `WIFI_SSID` / `WIFI_PASSWORD` - Mạng WiFi của bạn
-2. `BACKEND_URL` - URL Flask backend của bạn (định dạng: `http://IP_ADDRESS:5000/prediction/predict`)
-3. (Tùy chọn) `SAMPLING_INTERVAL` - Tần suất gửi dữ liệu (mặc định: 60000ms = 1 phút)
-4. (Tùy chọn) `NUM_SAMPLES` - Số lượng mẫu analog cần lấy trung bình (mặc định: 10)
+Firmware sử dụng **WiFiManager** để tự động kết nối WiFi qua captive portal:
+
+1. Khi khởi động, ESP32 sẽ tìm kiếm WiFi đã lưu
+2. Nếu không có WiFi đã lưu, ESP32 tạo Access Point tên **"WaterSensor_Config"** với mật khẩu **"12345678"**
+3. Kết nối vào AP này từ điện thoại/laptop
+4. Trình duyệt sẽ tự động mở trang cấu hình (hoặc truy cập 192.168.4.1)
+5. Chọn mạng WiFi của bạn và nhập mật khẩu
+6. Nhấn "Save" - ESP32 sẽ kết nối và lưu cấu hình
+
+**Lưu ý:** 
+- Config portal tự động tắt sau 3 phút nếu không có thiết bị kết nối
+- Thông tin WiFi được lưu trong ESP32, không cần cấu hình lại khi upload Firmware mới
+- Nếu muốn xóa cấu hình cũ, giữ nút RESET/GPIO0 khi khởi động (hoặc dùng `wifiManager.resetSettings()` trong code)
+
+### Backend URL
+
+Hiện tại `BACKEND_URL` được hardcode trong firmware:
+```cpp
+const char* BACKEND_URL = "http://your-backend-ip:5000/prediction/predict";
+```
+
+Thay đổi IP address trong code trước khi upload, hoặc thêm Serial command interface để cấu hình từ xa (tính năng tương lai).
 
 ## Hiệu chuẩn Cảm biến
 
@@ -103,25 +121,29 @@ float getTemperature() {
 Project sử dụng PlatformIO với file cấu hình `platformio.ini`:
 
 ```ini
-[env:esp32dev]
+[env:esp32s3]
 platform = espressif32
-board = esp32dev
+board = esp32-s3-devkitc-1
 framework = arduino
 
 lib_deps =
     bblanchon/ArduinoJson
     paulstoffregen/OneWire
     milesburton/DallasTemperature
+    arduino-libraries/NTPClient
+    tzapu/WiFiManager
 ```
 
 **Các mục cấu hình:**
 - `platform = espressif32` - Nền tảng ESP32
-- `board = esp32dev` - Board ESP32 DevKit (có thể thay đổi nếu dùng board khác)
+- `board = esp32-s3-devkitc-1` - Board ESP32-S3 DevKit (có thể thay đổi nếu dùng board khác)
 - `framework = arduino` - Sử dụng Arduino framework
-- `lib_deps` - Các thư viện dependencies, PlatformIO sẽ tự động tải về và cài đặt:
+- `lib_deps` - Các thư viện dependencies:
   - `bblanchon/ArduinoJson` - Thư viện JSON serialization
   - `paulstoffregen/OneWire` - Bus 1-Wire cho DS18B20
   - `milesburton/DallasTemperature` - Thư viện cảm biến nhiệt độ
+  - `arduino-libraries/NTPClient` - Đồng bộ thời gian qua NTP
+  - `tzapu/WiFiManager` - Quản lý WiFi với captive portal
 
 ### Upload Firmware với PlatformIO
 

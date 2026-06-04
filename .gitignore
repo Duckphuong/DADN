@@ -202,8 +202,8 @@ cython_debug/
 # Ignore local model assets in backend
 
 # be/modelsAI/
-be/modelsAI/*
-!be/modelsAI/.gitkeep
+# be/modelsAI/*
+# !be/modelsAI/.gitkeep
 
 # Node / Frontend
 node_modules/

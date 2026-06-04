@@ -1,0 +1,72 @@
+{
+    "Temp": {
+        "mean": 24.98,
+        "min_safe": 15.97,
+        "max_safe": 34.01
+    },
+    "Turbidity": {
+        "mean": 38.52,
+        "min_safe": 16.35,
+        "max_safe": 74.61
+    },
+    "DO": {
+        "mean": 5.23,
+        "min_safe": 3.21,
+        "max_safe": 7.67
+    },
+    "BOD": {
+        "mean": 2.76,
+        "min_safe": 1.09,
+        "max_safe": 5.59
+    },
+    "CO2": {
+        "mean": 6.09,
+        "min_safe": 0.93,
+        "max_safe": 9.57
+    },
+    "pH": {
+        "mean": 7.77,
+        "min_safe": 6.1,
+        "max_safe": 9.41
+    },
+    "Alkalinity": {
+        "mean": 78.07,
+        "min_safe": 28.09,
+        "max_safe": 179.17
+    },
+    "Hardness": {
+        "mean": 124.14,
+        "min_safe": 31.93,
+        "max_safe": 266.93
+    },
+    "Calcium": {
+        "mean": 79.68,
+        "min_safe": 12.61,
+        "max_safe": 222.89
+    },
+    "Ammonia": {
+        "mean": 0.02,
+        "min_safe": 0.0,
+        "max_safe": 0.05
+    },
+    "Nitrite": {
+        "mean": 0.51,
+        "min_safe": 0.0,
+        "max_safe": 1.83
+    },
+    "Phosphorus": {
+        "mean": 1.13,
+        "min_safe": 0.01,
+        "max_safe": 2.81
+    },
+    "H2S": {
+        "mean": 0.01,
+        "min_safe": 0.0,
+        "max_safe": 0.02
+    },
+    "Plankton": {
+        "mean": 3808.51,
+        "min_safe": 2203.97,
+        "max_safe": 5712.51
+    }
+}

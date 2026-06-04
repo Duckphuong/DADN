@@ -15,6 +15,7 @@ from app.services.ai_model_service import AIModelService
 from app.services.sensor_health_service import SensorHealthService
 from app.presentation.http.middleware.auth_middleware import jwt_required
 from app.infrastructure.persistence.mongo.object_id import parse_object_id
+from app.presentation.http.serializers.common import serialize_local_datetime
 
 prediction_bp = Blueprint('prediction', __name__, url_prefix="/prediction")
 
@@ -113,9 +114,12 @@ def get_history():
             created = item.get("created_at")
             if created is not None:
                 try:
-                    item["created_at"] = created.isoformat()
+                    item["created_at"] = serialize_local_datetime(created, tz_name="Asia/Ho_Chi_Minh", fmt_iso=True)
                 except Exception:
-                    pass
+                    try:
+                        item["created_at"] = created.isoformat()
+                    except Exception:
+                        pass
             history.append(item)
         return jsonify(history)
     except Exception as e:

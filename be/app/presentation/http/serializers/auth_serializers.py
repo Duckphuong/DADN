@@ -1,6 +1,6 @@
 from app.application.auth.commands import LoginUserResult
 from app.domain.auth.user import User
-from app.presentation.http.serializers.common import serialize_utc_datetime
+from app.presentation.http.serializers.common import serialize_local_datetime, serialize_utc_datetime
 
 
 def serialize_user(user: User) -> dict:
@@ -11,8 +11,8 @@ def serialize_user(user: User) -> dict:
         "role": user.role,
         "phoneNumber": user.phone_number,
         "status": user.status,
-        "createdAt": serialize_utc_datetime(user.created_at),
-        "updatedAt": serialize_utc_datetime(user.updated_at),
+        "createdAt": serialize_local_datetime(user.created_at),
+        "updatedAt": serialize_local_datetime(user.updated_at),
     }
     if user.id is not None:
         payload["id"] = user.id

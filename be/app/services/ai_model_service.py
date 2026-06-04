@@ -308,6 +308,9 @@ class AIModelService:
 
 		results = []
 
+		# abnormal_parameters
+		abnormal_parameters = self.analyze_abnormal_parameters(data)
+
 		for name, model in selected.items():
 			model_info = self.metadata.get(name, {})
 			input_data = features_scaled if model_info.get("use_scaler") else features
@@ -320,11 +323,7 @@ class AIModelService:
 			confidence = max(0.0, min(100.0, model_info.get("score", 0.0) * 100.0))
 
 			label = self.getWqiLabel(prediction_value)
-			# abnormal_parameters
-			abnormal_parameters = []
-			if label in ["Good", "Poor"]:
-				abnormal_parameters = self.analyze_abnormal_parameters(data)
-
+		
 			risk_status, risk_level = self.getRiskFromWQILabel(label)
 
 			delta = max(1.0, rmse * 1.5 if rmse > 0 else 3.0)
@@ -540,15 +539,33 @@ class AIModelService:
 		oxygen_fields = {"DO"}
 
 		for field in FEATURE_COLUMNS:
-			if field not in sensor_data:
+
+			# tìm giá trị theo alias
+			value = None
+
+			for alias in FEATURE_ALIASES.get(field, [field]):
+				if alias in sensor_data and sensor_data.get(alias) not in (None, ""):
+					value = sensor_data.get(alias)
+					break
+
+			if value is None:
 				continue
 
-			if field not in profile:
+			profile_key = None
+
+			for alias in FEATURE_ALIASES.get(field, [field]):
+				if alias in profile:
+					profile_key = alias
+					break
+
+			if profile_key is None:
 				continue
 
-			value = self._to_float(sensor_data.get(field))
+			ref = profile[profile_key]	
 
-			ref = profile[field]
+			value = self._to_float(value)
+
+			# ref = profile[field]
 
 			min_safe = ref.get("min_safe")
 			max_safe = ref.get("max_safe")

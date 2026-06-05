@@ -41,6 +41,7 @@ export interface Prediction {
 export interface HistoryData {
     id: string;
     created_at?: string;
+    idSensor?: string;
     "Nhiệt độ"?: number;
     DO?: number;
     pH?: number;

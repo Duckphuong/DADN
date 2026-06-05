@@ -528,10 +528,10 @@ void sendSensorData() {
     bool success = false;
     int attempt = 0;
     
-     while (!success && attempt < HTTP_MAX_RETRIES) {
-       HTTPClient http;
-       http.begin(backendURL);
-       http.addHeader("Content-Type", "application/json");
+    while (!success && attempt < HTTP_MAX_RETRIES) {
+      HTTPClient http;
+      http.begin(backendURL);
+      http.addHeader("Content-Type", "application/json");
 
       int httpCode = http.POST(jsonString);
 

@@ -320,6 +320,11 @@ class AIModelService:
 			confidence = max(0.0, min(100.0, model_info.get("score", 0.0) * 100.0))
 
 			label = self.getWqiLabel(prediction_value)
+			# abnormal_parameters
+			abnormal_parameters = []
+			if label in ["Good", "Poor"]:
+				abnormal_parameters = self.analyze_abnormal_parameters(data)
+
 			risk_status, risk_level = self.getRiskFromWQILabel(label)
 
 			delta = max(1.0, rmse * 1.5 if rmse > 0 else 3.0)
@@ -376,6 +381,7 @@ class AIModelService:
 				"summary": {
 					"wqi": best["wqi"],
 					"forecast_24h": best["forecast_24h"],
+					"abnormal_parameters": abnormal_parameters,
 				},
 			}
 			final_solution = solution_service.generate_advanced_solution(
@@ -415,6 +421,7 @@ class AIModelService:
 				"confidence": best["confidence"],
 				"solution": final_solution,
 				"weather": weather_info,
+				"abnormal_parameters": abnormal_parameters,
 			},
 		}
 
@@ -515,3 +522,110 @@ class AIModelService:
 			"Poor": "Immediate action required.",
 		}
 		return mapping.get(quality_name, "Check water quality parameters and adjust accordingly.")
+	
+	def analyze_abnormal_parameters(self, sensor_data: dict):
+		profile_path = os.path.join(self.MODEL_DIR, "good_water_profile.json")
+
+		if not os.path.exists(profile_path):
+			return []
+
+		with open(profile_path, "r", encoding="utf-8") as f:
+			profile = json.load(f)
+
+		results = []
+
+		# nhóm chỉ số xử lý theo kiểu riêng
+		temperature_fields = {"Nhiệt độ"}
+		bacteria_fields = {"Aeromonas tổng số", "Coliform"}
+		oxygen_fields = {"DO"}
+
+		for field in FEATURE_COLUMNS:
+			if field not in sensor_data:
+				continue
+
+			if field not in profile:
+				continue
+
+			value = self._to_float(sensor_data.get(field))
+
+			ref = profile[field]
+
+			min_safe = ref.get("min_safe")
+			max_safe = ref.get("max_safe")
+
+			if min_safe is None or max_safe is None:
+				continue
+
+			# ================= BELOW SAFE =================
+			if value < min_safe:
+				diff = round(min_safe - value, 2)
+
+				# nhiệt độ
+				if field in temperature_fields:
+					message = f"{field} thấp hơn mức an toàn {diff}°C"
+
+				# DO
+				elif field in oxygen_fields:
+					message = f"{field} thấp hơn mức cần thiết {diff} mg/L"
+
+				# mặc định
+				else:
+					times = round(min_safe / max(value, 0.0001), 2)
+					message = (
+						f"{field} thấp hơn ngưỡng an toàn "
+						f"{times} lần"
+					)
+
+				results.append({
+					"parameter": field,
+					"status": "below_safe",
+					"value": value,
+					"safe_min": min_safe,
+					"difference": diff,
+					"message": message,
+				})
+
+			# ================= ABOVE SAFE =================
+			elif value > max_safe:
+				diff = round(value - max_safe, 2)
+				times = round(value / max_safe, 2)
+
+				# vi sinh
+				if field in bacteria_fields:
+					message = (
+						f"Mật độ {field} vượt ngưỡng an toàn "
+						f"gấp {times} lần"
+					)
+
+				# nhiệt độ
+				elif field in temperature_fields:
+					message = (
+						f"{field} cao hơn mức an toàn "
+						f"{diff}°C"
+					)
+
+				# pH
+				elif field == "pH":
+					message = (
+						f"pH vượt khỏi khoảng an toàn "
+						f"{diff} đơn vị"
+					)
+
+				# mặc định
+				else:
+					message = (
+						f"{field} vượt ngưỡng an toàn "
+						f"gấp {times} lần"
+					)
+
+				results.append({
+					"parameter": field,
+					"status": "above_safe",
+					"value": value,
+					"safe_max": max_safe,
+					"times_exceeded": times,
+					"difference": diff,
+					"message": message,
+				})
+
+		return results

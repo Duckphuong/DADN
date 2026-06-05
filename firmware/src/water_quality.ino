@@ -16,7 +16,7 @@
 // ============================================
 
 // Backend API endpoint (loaded from SPIFFS config, with fallback default)
-String backendURL = "http://192.168.135.169:5000/prediction/predict";  // Default fallback
+String backendURL = "https://dadn.dungne.io.vn/prediction/predict";  // Default fallback
 const char* CONFIG_FILE = "/backend_config.txt";
 
 // ============================================

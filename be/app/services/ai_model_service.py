@@ -459,6 +459,11 @@ class AIModelService:
 		if feature_df.empty:
 			return
 
+		if target_column in feature_df.columns:
+			wqi_values = pd.to_numeric(feature_df[target_column], errors="coerce")
+			good_rows = wqi_values >= 45 
+			feature_df = feature_df[good_rows].copy()
+
 		profile = {}
 		for column in FEATURE_COLUMNS:
 			if column not in feature_df.columns:
